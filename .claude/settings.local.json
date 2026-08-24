@@ -3,5 +3,8 @@
     "allow": [
       "Bash(./gradlew dependencies *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "idea"
+  ]
 }

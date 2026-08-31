@@ -6,11 +6,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface TestSessionRepository extends JpaRepository<TestSession, Long> {
 
     List<TestSession> findBySchoolClassIdOrderByTestDateDescIdDesc(Long classId);
+
+    List<TestSession> findBySchoolClassIdAndTestDate(Long classId, LocalDate testDate);
 
     @Query("select distinct ts from TestSession ts join TestRecord tr on tr.testSession = ts "
             + "where tr.student.id = :studentId "

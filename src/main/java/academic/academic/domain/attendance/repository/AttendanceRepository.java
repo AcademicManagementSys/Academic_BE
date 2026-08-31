@@ -17,4 +17,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByClassIdAndDate(@Param("classId") Long classId, @Param("date") LocalDate date);
 
     List<Attendance> findByStudentIdAndDateBetweenOrderByDateAsc(Long studentId, LocalDate start, LocalDate end);
+
+    @Query("select a from Attendance a where a.student.schoolClass.id = :classId and a.date between :start and :end")
+    List<Attendance> findByClassIdAndDateBetween(@Param("classId") Long classId,
+                                                  @Param("start") LocalDate start,
+                                                  @Param("end") LocalDate end);
 }

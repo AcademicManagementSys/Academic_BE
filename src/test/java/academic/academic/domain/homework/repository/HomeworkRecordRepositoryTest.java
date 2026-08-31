@@ -118,4 +118,29 @@ class HomeworkRecordRepositoryTest {
 
         assertThat(homeworkRecordRepository.findByHomeworkItemId(item.getId())).isEmpty();
     }
+
+    @Test
+    void 반의_기간_내_숙제_기록을_조회한다() {
+        SchoolClass classA = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        SchoolClass classB = entityManager.persist(SchoolClass.builder().name("초등 문법반").build());
+        Student studentInA = entityManager.persist(Student.builder().name("김민준").schoolClass(classA).build());
+        Student studentInB = entityManager.persist(Student.builder().name("박서준").schoolClass(classB).build());
+        HomeworkItem itemA1 = entityManager.persist(HomeworkItem.builder().schoolClass(classA).title("Ch.5")
+                .assignedDate(LocalDate.of(2026, 8, 10)).build());
+        HomeworkItem itemAOutOfRange = entityManager.persist(HomeworkItem.builder().schoolClass(classA).title("Ch.4")
+                .assignedDate(LocalDate.of(2026, 7, 20)).build());
+        HomeworkItem itemB = entityManager.persist(HomeworkItem.builder().schoolClass(classB).title("Ch.1")
+                .assignedDate(LocalDate.of(2026, 8, 10)).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(itemA1).student(studentInA).done(true).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(itemAOutOfRange).student(studentInA).done(true).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(itemB).student(studentInB).done(false).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<HomeworkRecord> result = homeworkRecordRepository.findByClassIdAndAssignedDateBetween(
+                classA.getId(), LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getHomeworkItem().getTitle()).isEqualTo("Ch.5");
+    }
 }

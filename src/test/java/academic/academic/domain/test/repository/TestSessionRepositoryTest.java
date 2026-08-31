@@ -78,4 +78,22 @@ class TestSessionRepositoryTest {
         assertThat(result.get(0).getTitle()).isEqualTo("3회차");
         assertThat(result.get(1).getTitle()).isEqualTo("2회차");
     }
+
+    @Test
+    void 반과_시행일로_회차_목록을_조회한다() {
+        SchoolClass classA = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        SchoolClass classB = entityManager.persist(SchoolClass.builder().name("초등 문법반").build());
+        LocalDate date = LocalDate.of(2026, 8, 19);
+        entityManager.persist(TestSession.builder().schoolClass(classA).title("8월 3주차 단어테스트").testDate(date).build());
+        entityManager.persist(TestSession.builder().schoolClass(classA).title("8월 4주차 테스트")
+                .testDate(LocalDate.of(2026, 8, 26)).build());
+        entityManager.persist(TestSession.builder().schoolClass(classB).title("초등반 테스트").testDate(date).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<TestSession> result = testSessionRepository.findBySchoolClassIdAndTestDate(classA.getId(), date);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getTitle()).isEqualTo("8월 3주차 단어테스트");
+    }
 }

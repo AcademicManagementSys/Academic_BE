@@ -97,4 +97,29 @@ class AttendanceRepositoryTest {
         assertThat(result.get(0).getDate()).isEqualTo(LocalDate.of(2026, 8, 3));
         assertThat(result.get(1).getDate()).isEqualTo(LocalDate.of(2026, 8, 10));
     }
+
+    @Test
+    void 반의_기간_내_출석_기록을_조회한다() {
+        SchoolClass classA = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        SchoolClass classB = entityManager.persist(SchoolClass.builder().name("초등 문법반").build());
+        Student studentInA = entityManager.persist(Student.builder().name("김민준").schoolClass(classA).build());
+        Student studentInB = entityManager.persist(Student.builder().name("박서준").schoolClass(classB).build());
+        entityManager.persist(Attendance.builder().student(studentInA).date(LocalDate.of(2026, 8, 3))
+                .status(AttendanceStatus.PRESENT).build());
+        entityManager.persist(Attendance.builder().student(studentInA).date(LocalDate.of(2026, 8, 10))
+                .status(AttendanceStatus.ABSENT).build());
+        entityManager.persist(Attendance.builder().student(studentInA).date(LocalDate.of(2026, 7, 30))
+                .status(AttendanceStatus.PRESENT).build());
+        entityManager.persist(Attendance.builder().student(studentInB).date(LocalDate.of(2026, 8, 3))
+                .status(AttendanceStatus.PRESENT).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Attendance> result = attendanceRepository.findByClassIdAndDateBetween(
+                classA.getId(), LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
+
+        assertThat(result).hasSize(2)
+                .extracting(a -> a.getDate())
+                .containsExactlyInAnyOrder(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 10));
+    }
 }

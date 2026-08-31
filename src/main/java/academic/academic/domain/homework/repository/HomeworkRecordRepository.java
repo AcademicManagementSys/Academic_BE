@@ -24,4 +24,11 @@ public interface HomeworkRecordRepository extends JpaRepository<HomeworkRecord, 
                                                                 @Param("to") LocalDate to);
 
     void deleteByHomeworkItemId(Long homeworkItemId);
+
+    @Query("select r from HomeworkRecord r "
+            + "where r.homeworkItem.schoolClass.id = :classId "
+            + "and r.homeworkItem.assignedDate between :start and :end")
+    List<HomeworkRecord> findByClassIdAndAssignedDateBetween(@Param("classId") Long classId,
+                                                              @Param("start") LocalDate start,
+                                                              @Param("end") LocalDate end);
 }

@@ -109,4 +109,27 @@ class TestRecordRepositoryTest {
                 .extracting(r -> r.getTestSession().getTitle())
                 .containsExactlyInAnyOrder("1회차", "2회차");
     }
+
+    @Test
+    void 지정된_회차들에_기록이_있는_학생_id를_중복없이_조회한다() {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student1 = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        Student student2 = entityManager.persist(Student.builder().name("이서연").schoolClass(schoolClass).build());
+        TestSession session1 = entityManager.persist(TestSession.builder().schoolClass(schoolClass).title("단어")
+                .testDate(LocalDate.of(2026, 8, 19)).build());
+        TestSession session2 = entityManager.persist(TestSession.builder().schoolClass(schoolClass).title("독해")
+                .testDate(LocalDate.of(2026, 8, 19)).build());
+        entityManager.persist(TestRecord.builder().testSession(session1).student(student1)
+                .subject(TestSubject.VOCAB).taken(true).score(18).build());
+        entityManager.persist(TestRecord.builder().testSession(session2).student(student1)
+                .subject(TestSubject.READING).taken(true).score(15).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Long> result = testRecordRepository.findDistinctStudentIdsByTestSessionIdIn(
+                List.of(session1.getId(), session2.getId()));
+
+        assertThat(result).containsExactly(student1.getId());
+        assertThat(result).doesNotContain(student2.getId());
+    }
 }

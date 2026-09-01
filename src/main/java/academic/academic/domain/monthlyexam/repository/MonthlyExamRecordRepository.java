@@ -6,12 +6,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface MonthlyExamRecordRepository extends JpaRepository<MonthlyExamRecord, Long> {
 
     Optional<MonthlyExamRecord> findByMonthlyExamIdAndStudentId(Long monthlyExamId, Long studentId);
+
+    long countByStudentIdAndCreatedAtAfter(Long studentId, LocalDateTime since);
 
     List<MonthlyExamRecord> findByMonthlyExamIdAndStudent_SchoolClassId(Long monthlyExamId, Long classId);
 

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "학원 학생관리 시스템 - FR-01~FR-07",
-    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-07(학부모/학생 조회 화면) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
+    "name": "학원 학생관리 시스템 - FR-01~FR-08",
+    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-08(알림 배지) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -815,6 +815,45 @@
           "event": [{
             "listen": "test",
             "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-08. 알림 (선택 기능)",
+      "item": [
+        {
+          "name": "[Student] 알림 배지 조회 (since 이후 새 항목 건수)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/notifications/badge?since=2020-01-01T00:00:00" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "var json = pm.response.json();",
+                "pm.test('totalCount는 영역별 합계와 같다', function () {",
+                "    var d = json.data;",
+                "    pm.expect(d.totalCount).to.equal(d.attendanceCount + d.homeworkCount + d.testCount + d.monthlyExamCount);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Student] 알림 배지 조회 (since 생략 - 오늘 자정 기준)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/notifications/badge" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Student] 알림 배지 - since 형식 오류 (예상: 422)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/notifications/badge?since=2026-08-19" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 422 (since 형식 오류)', function () { pm.response.to.have.status(422); });"] }
           }]
         }
       ]

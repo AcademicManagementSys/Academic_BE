@@ -7,12 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface HomeworkRecordRepository extends JpaRepository<HomeworkRecord, Long> {
 
     Optional<HomeworkRecord> findByHomeworkItemIdAndStudentId(Long homeworkItemId, Long studentId);
+
+    long countByStudentIdAndCreatedAtAfter(Long studentId, LocalDateTime since);
 
     @Query("select r from HomeworkRecord r where r.student.id = :studentId "
             + "order by r.homeworkItem.assignedDate desc, r.id desc")

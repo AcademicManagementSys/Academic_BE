@@ -12,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,5 +169,27 @@ class HomeworkRecordRepositoryTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getHomeworkItem().getTitle()).isEqualTo("Ch.5");
+    }
+
+    @Test
+    void since_이후_생성된_숙제_기록_건수만_센다() throws InterruptedException {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        HomeworkItem item = entityManager.persist(HomeworkItem.builder().schoolClass(schoolClass).title("Ch.5")
+                .assignedDate(LocalDate.of(2026, 8, 17)).build());
+        HomeworkRecord first = entityManager.persist(HomeworkRecord.builder().homeworkItem(item).student(student).done(true).build());
+        entityManager.flush();
+        LocalDateTime since = first.getCreatedAt().plusNanos(1_000_000); // H2 TIMESTAMP은 마이크로초 반올림 저장되므로 여유를 둔다
+        Thread.sleep(50);
+
+        HomeworkItem item2 = entityManager.persist(HomeworkItem.builder().schoolClass(schoolClass).title("Ch.6")
+                .assignedDate(LocalDate.of(2026, 8, 18)).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(item2).student(student).done(false).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        long count = homeworkRecordRepository.countByStudentIdAndCreatedAtAfter(student.getId(), since);
+
+        assertThat(count).isEqualTo(1);
     }
 }

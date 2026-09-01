@@ -12,6 +12,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -131,5 +132,27 @@ class TestRecordRepositoryTest {
 
         assertThat(result).containsExactly(student1.getId());
         assertThat(result).doesNotContain(student2.getId());
+    }
+
+    @Test
+    void since_이후_생성된_테스트_기록_건수만_센다() throws InterruptedException {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        TestSession session = entityManager.persist(TestSession.builder().schoolClass(schoolClass).title("8월 3주차 테스트")
+                .testDate(LocalDate.of(2026, 8, 19)).build());
+        TestRecord first = entityManager.persist(TestRecord.builder().testSession(session).student(student)
+                .subject(TestSubject.VOCAB).taken(true).score(18).build());
+        entityManager.flush();
+        LocalDateTime since = first.getCreatedAt().plusNanos(1_000_000); // H2 TIMESTAMP은 마이크로초 반올림 저장되므로 여유를 둔다
+        Thread.sleep(50);
+
+        entityManager.persist(TestRecord.builder().testSession(session).student(student)
+                .subject(TestSubject.READING).taken(true).score(16).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        long count = testRecordRepository.countByStudentIdAndCreatedAtAfter(student.getId(), since);
+
+        assertThat(count).isEqualTo(1);
     }
 }

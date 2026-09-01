@@ -11,6 +11,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -95,5 +96,26 @@ class MonthlyExamRecordRepositoryTest {
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getMonthlyExam().getExamMonth()).isEqualTo("2026-08");
         assertThat(result.get(1).getMonthlyExam().getExamMonth()).isEqualTo("2026-07");
+    }
+
+    @Test
+    void since_이후_생성된_성적_건수만_센다() throws InterruptedException {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        MonthlyExam exam1 = entityManager.persist(MonthlyExam.builder().examName("7월 학평").examMonth("2026-07").build());
+        MonthlyExam exam2 = entityManager.persist(MonthlyExam.builder().examName("8월 학평").examMonth("2026-08").build());
+        MonthlyExamRecord first = entityManager.persist(
+                MonthlyExamRecord.builder().monthlyExam(exam1).student(student).rawScore(78).build());
+        entityManager.flush();
+        LocalDateTime since = first.getCreatedAt().plusNanos(1_000_000); // H2 TIMESTAMP은 마이크로초 반올림 저장되므로 여유를 둔다
+        Thread.sleep(50);
+
+        entityManager.persist(MonthlyExamRecord.builder().monthlyExam(exam2).student(student).rawScore(82).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        long count = monthlyExamRecordRepository.countByStudentIdAndCreatedAtAfter(student.getId(), since);
+
+        assertThat(count).isEqualTo(1);
     }
 }

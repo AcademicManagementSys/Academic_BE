@@ -2,11 +2,13 @@ package academic.academic.domain.student.controller;
 
 import academic.academic.domain.student.dto.AttendanceSummaryResponse;
 import academic.academic.domain.student.dto.HomeworkSummaryItem;
+import academic.academic.domain.student.dto.NotificationBadgeResponse;
 import academic.academic.domain.student.dto.RecentMonthlyExamSummary;
 import academic.academic.domain.student.dto.RecentTestSummary;
 import academic.academic.domain.student.dto.StudentSummaryResponse;
 import academic.academic.domain.student.dto.StudentSummaryStudentInfo;
 import academic.academic.domain.student.dto.TestScoresSummary;
+import academic.academic.domain.student.service.NotificationBadgeService;
 import academic.academic.domain.student.service.StudentService;
 import academic.academic.domain.student.service.StudentSummaryService;
 import academic.academic.global.exception.BusinessException;
@@ -18,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -38,6 +41,9 @@ class StudentControllerTest {
 
     @MockitoBean
     private StudentSummaryService studentSummaryService;
+
+    @MockitoBean
+    private NotificationBadgeService notificationBadgeService;
 
     @Test
     void 학생_홈_요약을_조회한다() throws Exception {
@@ -88,6 +94,37 @@ class StudentControllerTest {
                 .willThrow(new BusinessException(ErrorCode.VALIDATION_ERROR, "month 형식이 올바르지 않습니다. (yyyy-MM)"));
 
         mockMvc.perform(get("/v1/students/101/summary").param("month", "2026/08"))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void 알림_배지를_조회한다() throws Exception {
+        given(notificationBadgeService.getBadge(eq(101L), eq("2026-08-19T00:00:00"))).willReturn(
+                new NotificationBadgeResponse(LocalDateTime.of(2026, 8, 19, 0, 0), 1, 2, 0, 1, 4));
+
+        mockMvc.perform(get("/v1/students/101/notifications/badge").param("since", "2026-08-19T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(4))
+                .andExpect(jsonPath("$.data.homeworkCount").value(2));
+    }
+
+    @Test
+    void since_생략시_기본값으로_배지를_조회한다() throws Exception {
+        given(notificationBadgeService.getBadge(eq(101L), isNull())).willReturn(
+                new NotificationBadgeResponse(LocalDateTime.of(2026, 9, 1, 0, 0), 0, 0, 0, 0, 0));
+
+        mockMvc.perform(get("/v1/students/101/notifications/badge"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(0));
+    }
+
+    @Test
+    void since_형식이_올바르지_않으면_422를_반환한다() throws Exception {
+        given(notificationBadgeService.getBadge(eq(101L), eq("2026-08-19")))
+                .willThrow(new BusinessException(ErrorCode.VALIDATION_ERROR, "since 형식이 올바르지 않습니다. (yyyy-MM-ddTHH:mm:ss)"));
+
+        mockMvc.perform(get("/v1/students/101/notifications/badge").param("since", "2026-08-19"))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }

@@ -11,6 +11,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -121,5 +122,28 @@ class AttendanceRepositoryTest {
         assertThat(result).hasSize(2)
                 .extracting(a -> a.getDate())
                 .containsExactlyInAnyOrder(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 10));
+    }
+
+    @Test
+    void since_이후_생성된_출석_건수만_센다() throws InterruptedException {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        Attendance first = entityManager.persist(Attendance.builder().student(student).date(LocalDate.of(2026, 8, 10))
+                .status(AttendanceStatus.PRESENT).build());
+        entityManager.flush();
+        // DB(H2) 컬럼은 마이크로초 단위로 반올림 저장되므로, 나노초 단위 원본값보다 살짝 더 큰 값으로
+        // 저장될 수 있다(예: .498732600 -> .498733). 그 반올림 오차(최대 0.5us)를 확실히 넘기도록
+        // 1ms 여유를 둔다.
+        LocalDateTime since = first.getCreatedAt().plusNanos(1_000_000);
+        Thread.sleep(50);
+
+        entityManager.persist(Attendance.builder().student(student).date(LocalDate.of(2026, 8, 11))
+                .status(AttendanceStatus.LATE).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        long count = attendanceRepository.countByStudentIdAndCreatedAtAfter(student.getId(), since);
+
+        assertThat(count).isEqualTo(1);
     }
 }

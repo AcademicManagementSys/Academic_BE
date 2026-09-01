@@ -1,9 +1,11 @@
 package academic.academic.domain.student.controller;
 
+import academic.academic.domain.student.dto.NotificationBadgeResponse;
 import academic.academic.domain.student.dto.StudentCreateRequest;
 import academic.academic.domain.student.dto.StudentResponse;
 import academic.academic.domain.student.dto.StudentSummaryResponse;
 import academic.academic.domain.student.dto.StudentUpdateRequest;
+import academic.academic.domain.student.service.NotificationBadgeService;
 import academic.academic.domain.student.service.StudentService;
 import academic.academic.domain.student.service.StudentSummaryService;
 import academic.academic.global.response.ApiResponse;
@@ -23,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 학생 관리 API (SCR-04, SCR-11, SCR-12, FR-01-01, FR-01-04, FR-01-05, FR-01-06, FR-07-01)
+ * 학생 관리 API (SCR-04, SCR-11, SCR-12, FR-01-01, FR-01-04, FR-01-05, FR-01-06, FR-07-01, FR-08-01)
  */
 @RestController
 @RequestMapping("/v1/students")
@@ -32,6 +34,7 @@ public class StudentController {
 
     private final StudentService studentService;
     private final StudentSummaryService studentSummaryService;
+    private final NotificationBadgeService notificationBadgeService;
 
     @GetMapping
     public ApiResponse<List<StudentResponse>> getStudents(@RequestParam(required = false) Long classId,
@@ -61,5 +64,11 @@ public class StudentController {
     public ApiResponse<StudentSummaryResponse> getStudentSummary(@PathVariable Long id,
                                                                     @RequestParam(required = false) String month) {
         return ApiResponse.of(studentSummaryService.getSummary(id, month));
+    }
+
+    @GetMapping("/{id}/notifications/badge")
+    public ApiResponse<NotificationBadgeResponse> getNotificationBadge(@PathVariable Long id,
+                                                                          @RequestParam(required = false) String since) {
+        return ApiResponse.of(notificationBadgeService.getBadge(id, since));
     }
 }

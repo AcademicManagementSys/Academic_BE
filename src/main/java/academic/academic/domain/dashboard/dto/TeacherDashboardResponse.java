@@ -5,6 +5,7 @@ import java.util.List;
 
 public record TeacherDashboardResponse(
         LocalDate date,
-        List<ClassChecklistResponse> classes
+        List<ClassChecklistResponse> classes,
+        List<ClassStatisticsResponse> allClassesSummary
 ) {
 }

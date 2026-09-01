@@ -4,6 +4,7 @@ import academic.academic.domain.attendance.entity.Attendance;
 import academic.academic.domain.attendance.entity.AttendanceStatus;
 import academic.academic.domain.attendance.repository.AttendanceRepository;
 import academic.academic.domain.dashboard.dto.ClassChecklistResponse;
+import academic.academic.domain.dashboard.dto.ClassStatisticsResponse;
 import academic.academic.domain.dashboard.dto.TeacherDashboardResponse;
 import academic.academic.domain.homework.entity.HomeworkItem;
 import academic.academic.domain.homework.entity.HomeworkRecord;
@@ -58,6 +59,8 @@ class TeacherDashboardServiceTest {
     private TestSessionRepository testSessionRepository;
     @Mock
     private TestRecordRepository testRecordRepository;
+    @Mock
+    private ClassStatisticsService classStatisticsService;
 
     private TeacherDashboardService teacherDashboardService;
 
@@ -70,7 +73,7 @@ class TeacherDashboardServiceTest {
     void setUp() {
         teacherDashboardService = new TeacherDashboardService(userRepository, schoolClassRepository, studentRepository,
                 attendanceRepository, homeworkItemRepository, homeworkRecordRepository,
-                testSessionRepository, testRecordRepository);
+                testSessionRepository, testRecordRepository, classStatisticsService);
 
         teacher = User.builder().name("김선생").role(Role.TEACHER).loginId("teacher1").passwordHash("hash").build();
         ReflectionTestUtils.setField(teacher, "id", 1L);
@@ -113,6 +116,8 @@ class TeacherDashboardServiceTest {
             given(testSessionRepository.findBySchoolClassIdAndTestDate(3L, date)).willReturn(List.of(testSession));
             given(testRecordRepository.findDistinctStudentIdsByTestSessionIdIn(List.of(300L)))
                     .willReturn(List.of(101L));
+            given(classStatisticsService.getClassStatistics(null))
+                    .willReturn(List.of(new ClassStatisticsResponse(3L, "중2 심화반", 1L, "김선생", 2, 66.7, 75.0)));
 
             TeacherDashboardResponse response = teacherDashboardService.getTeacherDashboard(1L, "2026-08-19");
 
@@ -126,12 +131,15 @@ class TeacherDashboardServiceTest {
             assertThat(item.homeworkUncheckedCount()).isEqualTo(1);
             assertThat(item.testSessionCount()).isEqualTo(1);
             assertThat(item.testUncheckedCount()).isEqualTo(1);
+            assertThat(response.allClassesSummary()).hasSize(1);
+            assertThat(response.allClassesSummary().get(0).className()).isEqualTo("중2 심화반");
         }
 
         @Test
         void date를_생략하면_오늘_날짜를_사용한다() {
             given(userRepository.findById(1L)).willReturn(Optional.of(teacher));
             given(schoolClassRepository.findByTeacherId(1L)).willReturn(List.of());
+            given(classStatisticsService.getClassStatistics(null)).willReturn(List.of());
 
             TeacherDashboardResponse response = teacherDashboardService.getTeacherDashboard(1L, null);
 

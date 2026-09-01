@@ -18,10 +18,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
             + "where (:classId is null or s.schoolClass.id = :classId) "
             + "and (:status is null or s.status = :status) "
             + "and (:excludeWithdrawn = false or s.status <> academic.academic.domain.student.entity.StudentStatus.WITHDRAWN) "
-            + "and (:keyword is null or s.name like concat('%', :keyword, '%')) "
+            + "and (:keywordPattern is null or s.name like :keywordPattern) "
             + "order by s.name asc")
     List<Student> search(@Param("classId") Long classId,
                           @Param("status") StudentStatus status,
                           @Param("excludeWithdrawn") boolean excludeWithdrawn,
-                          @Param("keyword") String keyword);
+                          @Param("keywordPattern") String keywordPattern);
 }

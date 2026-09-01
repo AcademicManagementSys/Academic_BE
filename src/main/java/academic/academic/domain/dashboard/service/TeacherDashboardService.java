@@ -2,6 +2,7 @@ package academic.academic.domain.dashboard.service;
 
 import academic.academic.domain.attendance.repository.AttendanceRepository;
 import academic.academic.domain.dashboard.dto.ClassChecklistResponse;
+import academic.academic.domain.dashboard.dto.ClassStatisticsResponse;
 import academic.academic.domain.dashboard.dto.TeacherDashboardResponse;
 import academic.academic.domain.homework.entity.HomeworkItem;
 import academic.academic.domain.homework.repository.HomeworkItemRepository;
@@ -29,7 +30,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 선생님 대시보드 (FR-06-01). 담당 반의 오늘 수업/미입력 항목(출석·숙제·테스트 미체크)을 제공한다.
+ * 선생님 대시보드 (FR-06-01, FR-06-03). 담당 반의 오늘 수업/미입력 항목(출석·숙제·테스트 미체크)과
+ * 학원 전체 반의 통계 요약(조회 전용)을 함께 제공한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,6 +46,7 @@ public class TeacherDashboardService {
     private final HomeworkRecordRepository homeworkRecordRepository;
     private final TestSessionRepository testSessionRepository;
     private final TestRecordRepository testRecordRepository;
+    private final ClassStatisticsService classStatisticsService;
 
     public TeacherDashboardResponse getTeacherDashboard(Long teacherId, String date) {
         User teacher = userRepository.findById(teacherId)
@@ -56,7 +59,8 @@ public class TeacherDashboardService {
         List<ClassChecklistResponse> items = schoolClassRepository.findByTeacherId(teacherId).stream()
                 .map(schoolClass -> buildChecklist(schoolClass, targetDate))
                 .toList();
-        return new TeacherDashboardResponse(targetDate, items);
+        List<ClassStatisticsResponse> allClassesSummary = classStatisticsService.getClassStatistics(null);
+        return new TeacherDashboardResponse(targetDate, items, allClassesSummary);
     }
 
     private ClassChecklistResponse buildChecklist(SchoolClass schoolClass, LocalDate date) {

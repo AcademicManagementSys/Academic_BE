@@ -1,7 +1,9 @@
 package academic.academic.domain.dashboard.controller;
 
+import academic.academic.domain.dashboard.dto.AdminDashboardResponse;
 import academic.academic.domain.dashboard.dto.ClassStatisticsResponse;
 import academic.academic.domain.dashboard.dto.TeacherDashboardResponse;
+import academic.academic.domain.dashboard.service.AdminDashboardService;
 import academic.academic.domain.dashboard.service.ClassStatisticsService;
 import academic.academic.domain.dashboard.service.TeacherDashboardService;
 import academic.academic.global.response.ApiResponse;
@@ -23,6 +25,12 @@ public class DashboardController {
 
     private final TeacherDashboardService teacherDashboardService;
     private final ClassStatisticsService classStatisticsService;
+    private final AdminDashboardService adminDashboardService;
+
+    @GetMapping("/admin")
+    public ApiResponse<AdminDashboardResponse> getAdminDashboard(@RequestParam(required = false) String date) {
+        return ApiResponse.of(adminDashboardService.getAdminDashboard(date));
+    }
 
     @GetMapping("/teacher")
     public ApiResponse<TeacherDashboardResponse> getTeacherDashboard(@RequestParam Long teacherId,

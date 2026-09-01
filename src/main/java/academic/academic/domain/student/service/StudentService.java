@@ -69,8 +69,8 @@ public class StudentService {
     public List<StudentResponse> getStudents(Long classId, String status, String keyword) {
         StudentStatus statusEnum = EnumParser.parse(StudentStatus.class, status, "status");
         boolean excludeWithdrawn = statusEnum == null;
-        String keywordParam = StringUtils.hasText(keyword) ? keyword : null;
-        return studentRepository.search(classId, statusEnum, excludeWithdrawn, keywordParam)
+        String keywordPattern = StringUtils.hasText(keyword) ? "%" + keyword + "%" : null;
+        return studentRepository.search(classId, statusEnum, excludeWithdrawn, keywordPattern)
                 .stream().map(StudentResponse::from).toList();
     }
 

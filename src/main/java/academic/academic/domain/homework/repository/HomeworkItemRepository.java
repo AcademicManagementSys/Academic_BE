@@ -11,7 +11,7 @@ import java.util.List;
 public interface HomeworkItemRepository extends JpaRepository<HomeworkItem, Long> {
 
     @Query("select hi from HomeworkItem hi where hi.schoolClass.id = :classId "
-            + "and (:weekStart is null or hi.assignedDate between :weekStart and :weekEnd) "
+            + "and (cast(:weekStart as date) is null or hi.assignedDate between :weekStart and :weekEnd) "
             + "order by hi.assignedDate desc, hi.id desc")
     List<HomeworkItem> search(@Param("classId") Long classId,
                                @Param("weekStart") LocalDate weekStart,

@@ -1,0 +1,843 @@
+{
+  "info": {
+    "name": "학원 학생관리 시스템 - FR-01~FR-06",
+    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-06(대시보드) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "teacherId", "value": "" },
+    { "key": "parentUserId", "value": "" },
+    { "key": "classId", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "studentId2", "value": "" },
+    { "key": "assignmentId", "value": "" },
+    { "key": "parentLinkId", "value": "" },
+    { "key": "attendanceId", "value": "" },
+    { "key": "homeworkItemId", "value": "" },
+    { "key": "testSessionId", "value": "" },
+    { "key": "typeCategoryId", "value": "" },
+    { "key": "monthlyExamId", "value": "" },
+    { "key": "monthlyExamRecordId", "value": "" },
+    { "key": "typeFeedbackId", "value": "" },
+    { "key": "today", "value": "" },
+    { "key": "thisMonth", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = new Date();",
+          "pm.collectionVariables.set('today', now.toISOString().slice(0,10));",
+          "pm.collectionVariables.set('thisMonth', now.toISOString().slice(0,7));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "FR-01. 학생/반/계정 관리",
+      "item": [
+        {
+          "name": "[User] 선생님 계정 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"role\": \"teacher\",\n  \"name\": \"김선생\",\n  \"loginId\": \"teacher_{{$timestamp}}\",\n  \"password\": \"pw1234\",\n  \"phone\": \"010-1111-1111\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/users"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('teacherId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[User] 학부모 계정 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"role\": \"parent\",\n  \"name\": \"김민준 학부모\",\n  \"loginId\": \"parent_{{$timestamp}}\",\n  \"password\": \"pw1234\",\n  \"phone\": \"010-2222-2222\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/users"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('parentUserId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[User] 계정 목록 조회 (역할별)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/v1/users?role=teacher"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[User] 계정 상세 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/users/{{teacherId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[User] 계정 정보 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"김선생(수정)\",\n  \"phone\": \"010-9999-9999\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/users/{{teacherId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Class] 반 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"중2 심화반\",\n  \"teacherId\": {{teacherId}},\n  \"schedule\": \"월수금 16:00\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/classes"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('classId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Class] 반 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/classes" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Class] 반 상세 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/classes/{{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Class] 반 정보 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"schedule\": \"화목 17:00\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/classes/{{classId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Student] 학생1 등록",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"김민준\",\n  \"birthDate\": \"2012-05-14\",\n  \"school\": \"○○중\",\n  \"grade\": \"중2\",\n  \"classId\": {{classId}},\n  \"teacherId\": {{teacherId}}\n}"
+            },
+            "url": "{{baseUrl}}/v1/students"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('studentId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Student] 학생2 등록",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"이서연\",\n  \"grade\": \"중2\",\n  \"classId\": {{classId}}\n}"
+            },
+            "url": "{{baseUrl}}/v1/students"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('studentId2', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Student] 학생 목록 조회 (반별/검색)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students?classId={{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Student] 학생 상세 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Student] 학생 정보 수정 (반배정/상태변경)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"grade\": \"중3\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/students/{{studentId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Class] 반 소속 학생 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/classes/{{classId}}/students" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[TeacherAssignment] 반 담당 배정",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"teacherId\": {{teacherId}},\n  \"classId\": {{classId}}\n}"
+            },
+            "url": "{{baseUrl}}/v1/teacher-assignments"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('assignmentId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[TeacherAssignment] 배정 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/teacher-assignments?teacherId={{teacherId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[ParentStudent] 학부모-자녀 연결",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"parentUserId\": {{parentUserId}},\n  \"studentId\": {{studentId}}\n}"
+            },
+            "url": "{{baseUrl}}/v1/parent-links"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('parentLinkId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[ParentStudent] 자녀 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/parents/{{parentUserId}}/children" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-02. 출석 관리",
+      "item": [
+        {
+          "name": "[Attendance] 반 단위 출석 일괄 저장",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"classId\": {{classId}},\n  \"date\": \"{{today}}\",\n  \"records\": [\n    { \"studentId\": {{studentId}}, \"status\": \"present\", \"note\": null },\n    { \"studentId\": {{studentId2}}, \"status\": \"absent\", \"note\": \"병원 진료\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/attendance/bulk"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('attendanceId', json.data[0].id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Attendance] 반·날짜별 출석 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/attendance?classId={{classId}}&date={{today}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Attendance] 출석 기록 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"status\": \"late\",\n  \"note\": \"10분 지각으로 정정\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/attendance/{{attendanceId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Attendance] 학생 월별 출석 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/attendance?month={{thisMonth}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-03. 숙제 관리",
+      "item": [
+        {
+          "name": "[Homework] 숙제 항목 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"classId\": {{classId}},\n  \"title\": \"단어장 Ch.5\",\n  \"scope\": \"Unit 12-15\",\n  \"assignedDate\": \"{{today}}\",\n  \"dueDate\": \"{{today}}\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/homework-items"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('homeworkItemId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Homework] 반 숙제 항목 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/homework-items?classId={{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Homework] 숙제 항목 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"title\": \"단어장 Ch.5 (수정)\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/homework-items/{{homeworkItemId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Homework] 학생×항목 매트릭스 일괄 저장",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"classId\": {{classId}},\n  \"items\": [\n    {\n      \"homeworkItemId\": {{homeworkItemId}},\n      \"records\": [\n        { \"studentId\": {{studentId}}, \"isDone\": true, \"score\": 98, \"comment\": \"오타 1개\" }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/homework-records/bulk"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', function () { pm.response.to.have.status(201); });"] }
+          }]
+        },
+        {
+          "name": "[Homework] 항목별 학생 기록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/homework-items/{{homeworkItemId}}/records" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Homework] 학생 숙제 이력 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/homework?from={{today}}&to={{today}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-04. 테스트 관리 (단어/독해/문법/구문독해)",
+      "item": [
+        {
+          "name": "[Test] 테스트 회차 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"classId\": {{classId}},\n  \"title\": \"8월 3주차 테스트\",\n  \"testDate\": \"{{today}}\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/test-sessions"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('testSessionId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Test] 반 테스트 회차 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/test-sessions?classId={{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Test] 학생×영역(4열) 매트릭스 일괄 저장",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"testSessionId\": {{testSessionId}},\n  \"records\": [\n    { \"studentId\": {{studentId}}, \"subject\": \"vocab\", \"isTaken\": true, \"score\": 18, \"maxScore\": 20 },\n    { \"studentId\": {{studentId}}, \"subject\": \"reading\", \"isTaken\": true, \"score\": 16, \"maxScore\": 20 },\n    { \"studentId\": {{studentId}}, \"subject\": \"grammar\", \"isTaken\": true, \"score\": 11, \"maxScore\": 20 },\n    { \"studentId\": {{studentId}}, \"subject\": \"syntax\", \"isTaken\": true, \"score\": 15, \"maxScore\": 20 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/v1/test-records/bulk"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', function () { pm.response.to.have.status(201); });"] }
+          }]
+        },
+        {
+          "name": "[Test] 회차 학생별 4영역 성적 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/test-sessions/{{testSessionId}}/records" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Test] 학생 테스트 이력 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/tests?limit=10" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-05. 월말모의고사 관리",
+      "item": [
+        {
+          "name": "[TypeCategory] 유형 카테고리 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"어휘\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/type-categories"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('typeCategoryId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[TypeCategory] 유형 카테고리 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/type-categories" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 회차 생성",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"examName\": \"3월 학평\",\n  \"examMonth\": \"{{thisMonth}}\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/monthly-exams"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('monthlyExamId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 회차 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/monthly-exams" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 학생 성적 등록",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"monthlyExamId\": {{monthlyExamId}},\n  \"studentId\": {{studentId}},\n  \"rawScore\": 82,\n  \"stdScore\": 128,\n  \"percentile\": 91,\n  \"grade\": \"2등급\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/monthly-exam-records"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('monthlyExamRecordId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 반별 성적 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/monthly-exams/{{monthlyExamId}}/records?classId={{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 성적 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"rawScore\": 85\n}"
+            },
+            "url": "{{baseUrl}}/v1/monthly-exam-records/{{monthlyExamRecordId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 유형별 피드백 추가",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"typeCategoryId\": {{typeCategoryId}},\n  \"status\": \"strength\",\n  \"feedbackText\": \"어휘 문제 정답률 95%로 우수합니다.\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/monthly-exam-records/{{monthlyExamRecordId}}/type-feedbacks"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('typeFeedbackId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 유형별 피드백 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"feedbackText\": \"어휘 문제 정답률 매우 우수합니다.\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/type-feedbacks/{{typeFeedbackId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 점수대별 피드백 등록/수정 (upsert)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"scoreBand\": \"80점대\",\n  \"feedbackText\": \"기본 문법과 어휘는 탄탄하나 빈칸추론 보완이 필요합니다.\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/monthly-exam-records/{{monthlyExamRecordId}}/score-feedback"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 회차 상세(성적+피드백 전체) 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/monthly-exam-records/{{monthlyExamRecordId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[MonthlyExam] 학생 성적 추이 조회 (그래프용)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/monthly-exams?limit=5" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-06. 대시보드 (선생님/관리자)",
+      "item": [
+        {
+          "name": "[Dashboard] 관리자 대시보드",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/dashboard/admin" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Dashboard] 선생님 대시보드 (담당 반 체크리스트 + 전체 반 통계)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/dashboard/teacher?teacherId={{teacherId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Dashboard] 반별 통계 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/dashboard/classes?month={{thisMonth}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "0. 정리(삭제) 예시 (선택 실행 - 맨 마지막에)",
+      "item": [
+        {
+          "name": "[MonthlyExam] 유형별 피드백 삭제",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/type-feedbacks/{{typeFeedbackId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', function () { pm.response.to.have.status(204); });"] }
+          }]
+        },
+        {
+          "name": "[ParentStudent] 학부모-자녀 연결 해제",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/parent-links/{{parentLinkId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', function () { pm.response.to.have.status(204); });"] }
+          }]
+        },
+        {
+          "name": "[TeacherAssignment] 배정 해제",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/teacher-assignments/{{assignmentId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', function () { pm.response.to.have.status(204); });"] }
+          }]
+        },
+        {
+          "name": "[Homework] 숙제 항목 삭제",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/homework-items/{{homeworkItemId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', function () { pm.response.to.have.status(204); });"] }
+          }]
+        },
+        {
+          "name": "[Class] 반 삭제 (예상: 422 - 소속 학생이 있어 삭제 불가)",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/classes/{{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 422 (정상: 소속 학생 존재)', function () { pm.response.to.have.status(422); });"] }
+          }]
+        },
+        {
+          "name": "[User] 선생님 계정 비활성화 예시",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"active\": false\n}"
+            },
+            "url": "{{baseUrl}}/v1/users/{{teacherId}}/status"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    }
+  ]
+}

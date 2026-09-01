@@ -1,10 +1,10 @@
-# FR-01 ~ FR-08 Postman 테스트 가이드
+# FR-01 ~ FR-09 Postman 테스트 가이드
 
-`Academic-FR01-FR08.postman_collection.json`으로 학생/반/계정(FR-01), 출석(FR-02), 숙제(FR-03),
-테스트(FR-04), 월말모의고사(FR-05), 대시보드(FR-06), 학부모/학생 조회 화면(FR-07), 알림 배지(FR-08)
-API를 처음부터 끝까지 수동으로 확인할 수 있습니다.
+`Academic-FR01-FR09.postman_collection.json`으로 학생/반/계정(FR-01), 출석(FR-02), 숙제(FR-03),
+테스트(FR-04), 월말모의고사(FR-05), 대시보드(FR-06), 학부모/학생 조회 화면(FR-07), 알림 배지(FR-08),
+공지사항(FR-09) API를 처음부터 끝까지 수동으로 확인할 수 있습니다.
 
-이 컬렉션은 실제로 Docker Postgres + `bootRun`으로 띄운 서버에 대해 **newman으로 61개 요청 전부
+이 컬렉션은 실제로 Docker Postgres + `bootRun`으로 띄운 서버에 대해 **newman으로 69개 요청 전부
 통과를 확인**했으며(2026-09-01 기준), 같은 DB에 대해 반복 재실행해도 전부 통과하는 것까지
 확인했습니다(유형 카테고리 같은 마스터 데이터의 get-or-create 처리 포함).
 
@@ -45,8 +45,8 @@ DB_PASSWORD=academic1234 ./gradlew bootRun
 
 ## 2. Postman에 컬렉션 임포트
 
-1. Postman 실행 → **Import** → `postman/Academic-FR01-FR08.postman_collection.json` 선택
-2. 컬렉션이 `학원 학생관리 시스템 - FR-01~FR-08` 이름으로 들어옵니다.
+1. Postman 실행 → **Import** → `postman/Academic-FR01-FR09.postman_collection.json` 선택
+2. 컬렉션이 `학원 학생관리 시스템 - FR-01~FR-09` 이름으로 들어옵니다.
 3. 컬렉션 변수(`baseUrl` 등)는 파일에 이미 채워져 있어 별도 Postman Environment를 만들 필요가 없습니다.
    - 서버 주소가 다르면 컬렉션 선택 → **Variables** 탭에서 `baseUrl` 값만 바꾸면 됩니다.
 
@@ -55,7 +55,7 @@ DB_PASSWORD=academic1234 ./gradlew bootRun
 ### 전체 순서대로 한 번에 (권장)
 
 컬렉션 우클릭 → **Run collection** (Collection Runner) → 전체 선택 후 Run.
-폴더 순서(FR-01 → FR-02 → ... → FR-07 → FR-08 → `0. 정리(삭제) 예시`)대로 실행되며, 앞 단계에서 만든
+폴더 순서(FR-01 → FR-02 → ... → FR-08 → FR-09 → `0. 정리(삭제) 예시`)대로 실행되며, 앞 단계에서 만든
 `teacherId`, `classId`, `studentId` 등을 뒤 단계가 자동으로 이어받습니다(컬렉션 변수에 저장/재사용).
 
 ### 요청 하나씩 눈으로 확인하고 싶을 때
@@ -92,6 +92,7 @@ docker rm -f academic-postgres
 | FR-06. 대시보드 | FR-06-01~03 | 관리자 대시보드, 선생님 대시보드(체크리스트+전체 반 통계), 반별 통계 |
 | FR-07. 학부모/학생 조회 화면 | FR-07-01 | 학생 홈 요약(`GET /v1/students/{id}/summary`) — 최근 출석/숙제/테스트/월말모의고사를 한 번에 조회. SCR-11(선생님용 학생 상세)에도 같은 API 사용 |
 | FR-08. 알림 (선택 기능) | FR-08-01 | 알림 배지(`GET /v1/students/{id}/notifications/badge?since=`) — since 이후 새로 생긴 출석/숙제/테스트/월말모의고사 건수 집계. 서버는 읽음 상태를 저장하지 않고(stateless), 클라이언트가 마지막 확인 시각을 매번 넘기는 방식 |
+| FR-09. 공지사항 관리 | FR-09-01~06 | 반별 공지 작성/수정/삭제, 상단 고정(pin) 토글, 목록 필터(scope/classId), 학생에게 노출되는 공지 조회(`GET /v1/students/{id}/notices`). 전체(all) 공지 작성 실패(선생님 시도 시 422) 케이스 포함. 전체 공지 성공 케이스는 관리자 계정이 있어야 하는데 관리자는 API로 못 만들어서 자동 플로우엔 없음 — 아래 "알려진 제약 사항" 참고 |
 | 0. 정리(삭제) 예시 | - | DELETE류 API 예시. 맨 마지막에 선택 실행 (반 삭제는 소속 학생이 있어 **422가 정상**입니다 — 삭제 제약 확인용) |
 
 각 요청에는 상태 코드를 검증하는 테스트 스크립트가 붙어 있어, Collection Runner로 돌리면
@@ -103,7 +104,20 @@ docker rm -f academic-postgres
   `/auth/login` 등은 아직 서버에 구현되어 있지 않습니다. 지금은 `teacherId`, `studentId` 같은
   파라미터를 직접 넘겨서 호출합니다. 인증이 추가되면 이 컬렉션도 로그인 요청과
   `Authorization: Bearer {{accessToken}}` 헤더를 추가해야 합니다.
-- **공지사항(FR-09) 미포함**: 이번 요청 범위(FR-01~FR-08)에 없어 컬렉션에도 포함하지 않았습니다.
+  API 명세서의 `/me/children`, `/me/notices`처럼 "로그인한 사용자" 기준 경로도 같은 이유로
+  `/v1/parents/{parentUserId}/children`, `/v1/students/{id}/notices`처럼 id를 직접 명시하는
+  경로로 대체했습니다. 같은 이유로 "선생님 본인이 작성한 공지만 수정/삭제 가능" 같은 세부 권한도
+  아직 서버에서 강제하지 않습니다(다른 도메인의 수정/삭제 API들과 동일한 수준).
+- **FR-09 전체(all) 공지는 API로 못 만든 관리자 계정이 필요**: `POST /v1/users`는 정책상 `role`이
+  `teacher`/`parent`만 허용합니다(admin은 API로 생성 불가 — FR-01의 기존 설계). 그래서 전체 공지
+  "성공" 케이스는 Postman 컬렉션에 넣지 못했고, 대신 "선생님이 전체 공지를 시도하면 422"라는 실패
+  케이스로 그 권한 규칙(FR-09-01/02: 전체 공지는 원장/관리자만)을 확인합니다. 전체 공지 생성까지 직접
+  확인하려면 DB에 admin 계정을 하나 심어야 합니다:
+  ```bash
+  docker exec academic-postgres psql -U ujs -d academic -c \
+    "INSERT INTO users (name, role, login_id, password_hash, active, created_at) VALUES ('원장','ADMIN','admin1','\$2a\$dummy',true, now());"
+  ```
+  그 후 `POST /v1/notices`에 그 계정의 `id`를 `authorId`로, `scope`를 `"all"`로 넣어 호출하면 됩니다.
 - **FR-08은 "선택" 기능이자 stateless 설계**: 요구사항 명세서에 "(선택) ... 알림 배지로 표시할 수
   있어야 한다"로 명시돼 있고, API 명세서에는 대응 엔드포인트가 아예 없어 직접 설계했습니다. 서버가
   "읽음/안읽음" 상태를 저장하는 대신, 클라이언트가 마지막으로 확인한 시각(`since`)을 매번 파라미터로

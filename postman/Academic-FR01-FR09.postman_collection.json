@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "학원 학생관리 시스템 - FR-01~FR-08",
-    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-08(알림 배지) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
+    "name": "학원 학생관리 시스템 - FR-01~FR-09",
+    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-09(공지사항) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요. FR-09의 전체(all) 공지는 관리자 계정이 필요한데 관리자는 API로 생성할 수 없어(FR-01 정책), 이 컬렉션은 반별(class) 공지 흐름만 자동 검증합니다 — README 참고.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -20,6 +20,7 @@
     { "key": "monthlyExamId", "value": "" },
     { "key": "monthlyExamRecordId", "value": "" },
     { "key": "typeFeedbackId", "value": "" },
+    { "key": "noticeId", "value": "" },
     { "key": "today", "value": "" },
     { "key": "thisMonth", "value": "" }
   ],
@@ -859,8 +860,131 @@
       ]
     },
     {
+      "name": "FR-09. 공지사항 관리",
+      "item": [
+        {
+          "name": "[Notice] 반별 공지 작성 (선생님)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"authorId\": {{teacherId}},\n  \"scope\": \"class\",\n  \"classId\": {{classId}},\n  \"title\": \"8/29(토) 특강 안내\",\n  \"content\": \"이번 주 토요일 특강은 2시간 진행됩니다.\",\n  \"isPinned\": false\n}"
+            },
+            "url": "{{baseUrl}}/v1/notices"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                "var json = pm.response.json();",
+                "pm.collectionVariables.set('noticeId', json.data.id);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Notice] 선생님은 전체(all) 공지를 작성할 수 없다 (예상: 422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"authorId\": {{teacherId}},\n  \"scope\": \"all\",\n  \"title\": \"전체 공지 시도\",\n  \"content\": \"내용\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/notices"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 422 (선생님은 전체 공지 작성 불가 - 정상 동작)', function () { pm.response.to.have.status(422); });"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Notice] 공지 목록 조회 (scope/classId 필터)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/notices?scope=class&classId={{classId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Notice] 공지 상세 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/notices/{{noticeId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Notice] 공지 수정",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"content\": \"이번 주 토요일 특강은 2시간 30분 진행됩니다. (변경)\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/notices/{{noticeId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        },
+        {
+          "name": "[Notice] 상단 고정(pin) 토글",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"isPinned\": true\n}"
+            },
+            "url": "{{baseUrl}}/v1/notices/{{noticeId}}/pin"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "pm.test('isPinned=true', function () { pm.expect(pm.response.json().data.isPinned).to.eql(true); });"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Student] 학생에게 노출되는 공지 목록 조회",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/notices" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
       "name": "0. 정리(삭제) 예시 (선택 실행 - 맨 마지막에)",
       "item": [
+        {
+          "name": "[Notice] 공지 삭제",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/notices/{{noticeId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', function () { pm.response.to.have.status(204); });"] }
+          }]
+        },
         {
           "name": "[MonthlyExam] 유형별 피드백 삭제",
           "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/v1/type-feedbacks/{{typeFeedbackId}}" },

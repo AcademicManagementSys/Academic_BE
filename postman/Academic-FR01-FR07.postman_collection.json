@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "학원 학생관리 시스템 - FR-01~FR-06",
-    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-06(대시보드) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
+    "name": "학원 학생관리 시스템 - FR-01~FR-07",
+    "description": "요구사항 명세서 v1.2 / API 명세서 v1.2 기준 FR-01(학생·반·계정)~FR-07(학부모/학생 조회 화면) 수동 확인용 컬렉션. 위에서 아래로 순서대로 실행하면 데이터가 자동으로 이어집니다(Collection Runner 권장). 맨 아래 '0. 정리(삭제) 예시' 폴더는 마지막에 선택적으로 실행하세요.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -576,9 +576,22 @@
             "script": {
               "type": "text/javascript",
               "exec": [
-                "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
-                "var json = pm.response.json();",
-                "pm.collectionVariables.set('typeCategoryId', json.data.id);"
+                "// TypeCategory는 학원 전체가 공유하는 마스터 데이터라 이름이 유니크해야 한다.",
+                "// 이미 존재하면(재실행 시 422) 목록에서 같은 이름을 찾아 그 id를 재사용한다(get-or-create).",
+                "if (pm.response.code === 201) {",
+                "    pm.test('Status 201 (신규 생성)', function () { pm.response.to.have.status(201); });",
+                "    var json = pm.response.json();",
+                "    pm.collectionVariables.set('typeCategoryId', json.data.id);",
+                "} else {",
+                "    pm.test('이미 존재하면 422 (재실행 시 정상)', function () { pm.expect(pm.response.code).to.equal(422); });",
+                "    pm.sendRequest({",
+                "        url: pm.collectionVariables.get('baseUrl') + '/v1/type-categories',",
+                "        method: 'GET'",
+                "    }, function (err, res) {",
+                "        var found = res.json().data.find(function (c) { return c.name === '어휘'; });",
+                "        if (found) { pm.collectionVariables.set('typeCategoryId', found.id); }",
+                "    });",
+                "}"
               ]
             }
           }]
@@ -770,6 +783,35 @@
         {
           "name": "[Dashboard] 반별 통계 조회",
           "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/dashboard/classes?month={{thisMonth}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "FR-07. 학부모/학생 조회 화면",
+      "item": [
+        {
+          "name": "[Student] 학생 홈 요약 (최근 출석/숙제/테스트/모의고사)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId}}/summary?month={{thisMonth}}" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                "var json = pm.response.json();",
+                "pm.test('student 정보 포함', function () { pm.expect(json.data.student).to.have.property('name'); });",
+                "pm.test('attendance 요약 포함', function () { pm.expect(json.data.attendance).to.have.property('totalDays'); });"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "[Student] 학생2 홈 요약 (데이터 적은 경우 - recentTest/recentMonthlyExam null 가능)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/v1/students/{{studentId2}}/summary" },
           "event": [{
             "listen": "test",
             "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] }

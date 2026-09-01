@@ -1,6 +1,7 @@
 package academic.academic.domain.homework.repository;
 
 import academic.academic.domain.homework.entity.HomeworkRecord;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,10 @@ import java.util.Optional;
 public interface HomeworkRecordRepository extends JpaRepository<HomeworkRecord, Long> {
 
     Optional<HomeworkRecord> findByHomeworkItemIdAndStudentId(Long homeworkItemId, Long studentId);
+
+    @Query("select r from HomeworkRecord r where r.student.id = :studentId "
+            + "order by r.homeworkItem.assignedDate desc, r.id desc")
+    List<HomeworkRecord> findRecentByStudentId(@Param("studentId") Long studentId, Pageable pageable);
 
     List<HomeworkRecord> findByHomeworkItemId(Long homeworkItemId);
 

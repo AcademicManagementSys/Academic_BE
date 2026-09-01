@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -99,6 +100,31 @@ class HomeworkRecordRepositoryTest {
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getHomeworkItem().getTitle()).isEqualTo("Ch.6");
         assertThat(result.get(1).getHomeworkItem().getTitle()).isEqualTo("Ch.5");
+    }
+
+    @Test
+    void 학생의_최근_숙제_기록을_부여일_내림차순으로_N건_조회한다() {
+        SchoolClass schoolClass = entityManager.persist(SchoolClass.builder().name("중2 심화반").build());
+        Student student = entityManager.persist(Student.builder().name("김민준").schoolClass(schoolClass).build());
+        Student other = entityManager.persist(Student.builder().name("이서연").schoolClass(schoolClass).build());
+        HomeworkItem item1 = entityManager.persist(HomeworkItem.builder().schoolClass(schoolClass).title("Ch.5")
+                .assignedDate(LocalDate.of(2026, 8, 10)).build());
+        HomeworkItem item2 = entityManager.persist(HomeworkItem.builder().schoolClass(schoolClass).title("Ch.6")
+                .assignedDate(LocalDate.of(2026, 8, 17)).build());
+        HomeworkItem item3 = entityManager.persist(HomeworkItem.builder().schoolClass(schoolClass).title("Ch.7")
+                .assignedDate(LocalDate.of(2026, 8, 24)).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(item1).student(student).done(true).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(item2).student(student).done(false).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(item3).student(student).done(true).build());
+        entityManager.persist(HomeworkRecord.builder().homeworkItem(item3).student(other).done(true).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        List<HomeworkRecord> result = homeworkRecordRepository.findRecentByStudentId(student.getId(), PageRequest.of(0, 2));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getHomeworkItem().getTitle()).isEqualTo("Ch.7");
+        assertThat(result.get(1).getHomeworkItem().getTitle()).isEqualTo("Ch.6");
     }
 
     @Test

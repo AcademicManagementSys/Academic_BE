@@ -1,10 +1,12 @@
-# FR-01 ~ FR-06 Postman 테스트 가이드
+# FR-01 ~ FR-07 Postman 테스트 가이드
 
-`Academic-FR01-FR06.postman_collection.json`으로 학생/반/계정(FR-01), 출석(FR-02), 숙제(FR-03),
-테스트(FR-04), 월말모의고사(FR-05), 대시보드(FR-06) API를 처음부터 끝까지 수동으로 확인할 수 있습니다.
+`Academic-FR01-FR07.postman_collection.json`으로 학생/반/계정(FR-01), 출석(FR-02), 숙제(FR-03),
+테스트(FR-04), 월말모의고사(FR-05), 대시보드(FR-06), 학부모/학생 조회 화면(FR-07) API를 처음부터
+끝까지 수동으로 확인할 수 있습니다.
 
-이 컬렉션은 실제로 Docker Postgres + `bootRun`으로 띄운 서버에 대해 **newman으로 55개 요청 전부
-통과를 확인**한 상태입니다 (2026-09-01 기준).
+이 컬렉션은 실제로 Docker Postgres + `bootRun`으로 띄운 서버에 대해 **newman으로 58개 요청 전부
+통과를 확인**했으며(2026-09-01 기준), 같은 DB에 대해 반복 재실행해도 전부 통과하는 것까지
+확인했습니다(유형 카테고리 같은 마스터 데이터의 get-or-create 처리 포함).
 
 ## 1. 사전 준비: 서버 띄우기
 
@@ -43,8 +45,8 @@ DB_PASSWORD=academic1234 ./gradlew bootRun
 
 ## 2. Postman에 컬렉션 임포트
 
-1. Postman 실행 → **Import** → `postman/Academic-FR01-FR06.postman_collection.json` 선택
-2. 컬렉션이 `학원 학생관리 시스템 - FR-01~FR-06` 이름으로 들어옵니다.
+1. Postman 실행 → **Import** → `postman/Academic-FR01-FR07.postman_collection.json` 선택
+2. 컬렉션이 `학원 학생관리 시스템 - FR-01~FR-07` 이름으로 들어옵니다.
 3. 컬렉션 변수(`baseUrl` 등)는 파일에 이미 채워져 있어 별도 Postman Environment를 만들 필요가 없습니다.
    - 서버 주소가 다르면 컬렉션 선택 → **Variables** 탭에서 `baseUrl` 값만 바꾸면 됩니다.
 
@@ -53,7 +55,7 @@ DB_PASSWORD=academic1234 ./gradlew bootRun
 ### 전체 순서대로 한 번에 (권장)
 
 컬렉션 우클릭 → **Run collection** (Collection Runner) → 전체 선택 후 Run.
-폴더 순서(FR-01 → FR-02 → ... → FR-06 → `0. 정리(삭제) 예시`)대로 실행되며, 앞 단계에서 만든
+폴더 순서(FR-01 → FR-02 → ... → FR-06 → FR-07 → `0. 정리(삭제) 예시`)대로 실행되며, 앞 단계에서 만든
 `teacherId`, `classId`, `studentId` 등을 뒤 단계가 자동으로 이어받습니다(컬렉션 변수에 저장/재사용).
 
 ### 요청 하나씩 눈으로 확인하고 싶을 때
@@ -66,6 +68,10 @@ DB_PASSWORD=academic1234 ./gradlew bootRun
 `[User] 선생님/학부모 계정 생성` 요청의 `loginId`는 `teacher_{{$timestamp}}`처럼 매 실행마다 자동으로
 달라지게 되어 있어, DB를 초기화하지 않고 컬렉션을 여러 번 다시 실행해도 로그인 아이디 중복
 (`409 DUPLICATE_LOGIN_ID`) 없이 새 데이터가 계속 쌓입니다.
+
+`[TypeCategory] 유형 카테고리 생성`(FR-05)은 반대로 학원 전체가 공유하는 마스터 데이터라 이름을
+매번 다르게 만들지 않습니다. 대신 테스트 스크립트가 "이미 존재하면(422) 목록에서 같은 이름을 찾아
+그 id를 재사용"하도록 짜여 있어(get-or-create), 몇 번을 재실행해도 안전합니다.
 
 DB를 완전히 비우고 처음부터 하고 싶다면:
 
@@ -84,6 +90,7 @@ docker rm -f academic-postgres
 | FR-04. 테스트 관리 | FR-04-01~06 | 테스트 회차 생성, 학생×4영역 매트릭스 일괄 저장, 조회 |
 | FR-05. 월말모의고사 관리 | FR-05-01~08 | 회차/유형카테고리 생성, 성적 등록·수정, 유형별/점수대별 피드백 |
 | FR-06. 대시보드 | FR-06-01~03 | 관리자 대시보드, 선생님 대시보드(체크리스트+전체 반 통계), 반별 통계 |
+| FR-07. 학부모/학생 조회 화면 | FR-07-01 | 학생 홈 요약(`GET /v1/students/{id}/summary`) — 최근 출석/숙제/테스트/월말모의고사를 한 번에 조회. SCR-11(선생님용 학생 상세)에도 같은 API 사용 |
 | 0. 정리(삭제) 예시 | - | DELETE류 API 예시. 맨 마지막에 선택 실행 (반 삭제는 소속 학생이 있어 **422가 정상**입니다 — 삭제 제약 확인용) |
 
 각 요청에는 상태 코드를 검증하는 테스트 스크립트가 붙어 있어, Collection Runner로 돌리면
@@ -95,10 +102,14 @@ docker rm -f academic-postgres
   `/auth/login` 등은 아직 서버에 구현되어 있지 않습니다. 지금은 `teacherId`, `studentId` 같은
   파라미터를 직접 넘겨서 호출합니다. 인증이 추가되면 이 컬렉션도 로그인 요청과
   `Authorization: Bearer {{accessToken}}` 헤더를 추가해야 합니다.
-- **공지사항(FR-09) 미포함**: 이번 요청 범위(FR-01~FR-06)에 없어 컬렉션에도 포함하지 않았습니다.
+- **공지사항(FR-09) 미포함**: 이번 요청 범위(FR-01~FR-07)에 없어 컬렉션에도 포함하지 않았습니다.
 - **테스트 실행(testUncheckedCount 등) 확인**: FR-06 대시보드의 `testUncheckedCount`를 보려면
   FR-04 폴더의 테스트 회차 생성까지 실행한 뒤 대시보드를 호출해야 값이 채워집니다(컬렉션 순서상 이미
   그렇게 되어 있음).
+- **FR-07은 API 하나뿐**: FR-07-02(탭 구분)·FR-07-03(반응형)은 프론트엔드 화면 요구사항이라 이
+  백엔드(Academic_BE) 저장소 범위 밖입니다. FR-07-04(저장 즉시 반영)는 서버에 캐싱이 없어 별도 구현
+  없이 이미 충족됩니다. 그래서 컬렉션에는 FR-07-01에 대응하는
+  `GET /v1/students/{id}/summary` 하나만 있습니다.
 
 ## 6. 트러블슈팅
 

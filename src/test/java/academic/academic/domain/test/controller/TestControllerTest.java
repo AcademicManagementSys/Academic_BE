@@ -8,11 +8,16 @@ import academic.academic.domain.test.dto.TestSessionResponse;
 import academic.academic.domain.test.entity.TestSubject;
 import academic.academic.domain.test.service.TestRecordService;
 import academic.academic.domain.test.service.TestSessionService;
+import academic.academic.domain.user.entity.Role;
 import academic.academic.global.exception.BusinessException;
 import academic.academic.global.exception.ErrorCode;
+import academic.academic.global.security.AuthorizationService;
+import academic.academic.global.security.JwtProvider;
+import academic.academic.support.AuthTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,7 +34,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TestController.class)
+@Import(JwtProvider.class)
 class TestControllerTest {
+
+    private static final String TEACHER_TOKEN = AuthTestSupport.bearer(2L, Role.TEACHER);
+    private static final String PARENT_TOKEN = AuthTestSupport.bearer(45L, Role.PARENT);
 
     @Autowired
     private MockMvc mockMvc;
@@ -43,19 +52,22 @@ class TestControllerTest {
     @MockitoBean
     private TestRecordService testRecordService;
 
+    @MockitoBean
+    private AuthorizationService authorizationService;
+
     @Test
     void 반의_테스트_회차_목록을_조회한다() throws Exception {
         given(testSessionService.search(3L))
                 .willReturn(List.of(new TestSessionResponse(901L, 3L, "중2 심화반", "8월 3주차 테스트", LocalDate.of(2026, 8, 19))));
 
-        mockMvc.perform(get("/v1/test-sessions").param("classId", "3"))
+        mockMvc.perform(get("/v1/test-sessions").header("Authorization", TEACHER_TOKEN).param("classId", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].title").value("8월 3주차 테스트"));
     }
 
     @Test
     void classId가_없으면_422를_반환한다() throws Exception {
-        mockMvc.perform(get("/v1/test-sessions"))
+        mockMvc.perform(get("/v1/test-sessions").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
@@ -66,7 +78,7 @@ class TestControllerTest {
         given(testSessionService.create(any(TestSessionCreateRequest.class)))
                 .willReturn(new TestSessionResponse(901L, 3L, "중2 심화반", "8월 3주차 테스트", LocalDate.of(2026, 8, 19)));
 
-        mockMvc.perform(post("/v1/test-sessions")
+        mockMvc.perform(post("/v1/test-sessions").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -79,7 +91,7 @@ class TestControllerTest {
                 {"classId":3,"testDate":"2026-08-19"}
                 """;
 
-        mockMvc.perform(post("/v1/test-sessions")
+        mockMvc.perform(post("/v1/test-sessions").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().is(422))
@@ -92,7 +104,7 @@ class TestControllerTest {
                 .willReturn(List.of(new TestRecordResponse(1L, 901L, "8월 3주차 테스트", LocalDate.of(2026, 8, 19),
                         101L, "김민준", TestSubject.VOCAB, true, 18, 20, "오타 1개")));
 
-        mockMvc.perform(get("/v1/test-sessions/901/records"))
+        mockMvc.perform(get("/v1/test-sessions/901/records").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].studentName").value("김민준"))
                 .andExpect(jsonPath("$.data[0].subject").value("vocab"))
@@ -108,7 +120,7 @@ class TestControllerTest {
                 .willReturn(List.of(new TestRecordResponse(1L, 901L, "8월 3주차 테스트", LocalDate.of(2026, 8, 19),
                         101L, "김민준", TestSubject.VOCAB, true, 18, 20, "오타 1개")));
 
-        mockMvc.perform(post("/v1/test-records/bulk")
+        mockMvc.perform(post("/v1/test-records/bulk").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -121,7 +133,7 @@ class TestControllerTest {
                 {"records":[{"studentId":101,"subject":"vocab","isTaken":true}]}
                 """;
 
-        mockMvc.perform(post("/v1/test-records/bulk")
+        mockMvc.perform(post("/v1/test-records/bulk").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().is(422))
@@ -134,7 +146,7 @@ class TestControllerTest {
                 .willReturn(List.of(new TestRecordResponse(1L, 901L, "8월 3주차 테스트", LocalDate.of(2026, 8, 19),
                         101L, "김민준", TestSubject.VOCAB, true, 18, 20, null)));
 
-        mockMvc.perform(get("/v1/students/101/tests"))
+        mockMvc.perform(get("/v1/students/101/tests").header("Authorization", PARENT_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].score").value(18));
     }
@@ -143,7 +155,7 @@ class TestControllerTest {
     void limit_파라미터를_전달하면_그대로_사용한다() throws Exception {
         given(testRecordService.getStudentTests(101L, 5)).willReturn(List.of());
 
-        mockMvc.perform(get("/v1/students/101/tests").param("limit", "5"))
+        mockMvc.perform(get("/v1/students/101/tests").header("Authorization", PARENT_TOKEN).param("limit", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
@@ -153,7 +165,7 @@ class TestControllerTest {
         given(testRecordService.getSessionRecords(999L))
                 .willThrow(new BusinessException(ErrorCode.NOT_FOUND, "테스트 회차를 찾을 수 없습니다. id=999"));
 
-        mockMvc.perform(get("/v1/test-sessions/999/records"))
+        mockMvc.perform(get("/v1/test-sessions/999/records").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
     }

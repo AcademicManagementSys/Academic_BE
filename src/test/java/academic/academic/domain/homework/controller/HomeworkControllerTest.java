@@ -9,11 +9,16 @@ import academic.academic.domain.homework.dto.HomeworkRecordItem;
 import academic.academic.domain.homework.dto.HomeworkRecordResponse;
 import academic.academic.domain.homework.service.HomeworkItemService;
 import academic.academic.domain.homework.service.HomeworkRecordService;
+import academic.academic.domain.user.entity.Role;
 import academic.academic.global.exception.BusinessException;
 import academic.academic.global.exception.ErrorCode;
+import academic.academic.global.security.AuthorizationService;
+import academic.academic.global.security.JwtProvider;
+import academic.academic.support.AuthTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,7 +38,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HomeworkController.class)
+@Import(JwtProvider.class)
 class HomeworkControllerTest {
+
+    private static final String TEACHER_TOKEN = AuthTestSupport.bearer(2L, Role.TEACHER);
+    private static final String PARENT_TOKEN = AuthTestSupport.bearer(45L, Role.PARENT);
 
     @Autowired
     private MockMvc mockMvc;
@@ -47,20 +56,30 @@ class HomeworkControllerTest {
     @MockitoBean
     private HomeworkRecordService homeworkRecordService;
 
+    @MockitoBean
+    private AuthorizationService authorizationService;
+
     @Test
     void 반의_숙제_항목_목록을_조회한다() throws Exception {
         given(homeworkItemService.search(3L, LocalDate.of(2026, 8, 17)))
                 .willReturn(List.of(new HomeworkItemResponse(501L, 3L, "중2 심화반", null, null,
                         "단어장 Ch.5", "Unit 12-15", LocalDate.of(2026, 8, 17), LocalDate.of(2026, 8, 19))));
 
-        mockMvc.perform(get("/v1/homework-items").param("classId", "3").param("week", "2026-08-17"))
+        mockMvc.perform(get("/v1/homework-items").header("Authorization", TEACHER_TOKEN)
+                        .param("classId", "3").param("week", "2026-08-17"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].title").value("단어장 Ch.5"));
     }
 
     @Test
+    void 토큰이_없으면_401을_반환한다() throws Exception {
+        mockMvc.perform(get("/v1/homework-items").param("classId", "3"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void classId가_없으면_422를_반환한다() throws Exception {
-        mockMvc.perform(get("/v1/homework-items"))
+        mockMvc.perform(get("/v1/homework-items").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
@@ -73,7 +92,7 @@ class HomeworkControllerTest {
                 .willReturn(new HomeworkItemResponse(501L, 3L, "중2 심화반", null, null,
                         "단어장 Ch.5", "Unit 12-15", LocalDate.of(2026, 8, 17), LocalDate.of(2026, 8, 19)));
 
-        mockMvc.perform(post("/v1/homework-items")
+        mockMvc.perform(post("/v1/homework-items").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -86,7 +105,7 @@ class HomeworkControllerTest {
                 {"classId":3,"assignedDate":"2026-08-17"}
                 """;
 
-        mockMvc.perform(post("/v1/homework-items")
+        mockMvc.perform(post("/v1/homework-items").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().is(422))
@@ -95,11 +114,12 @@ class HomeworkControllerTest {
 
     @Test
     void 숙제_항목을_수정한다() throws Exception {
+        given(homeworkItemService.getScope(501L)).willReturn(new HomeworkItemService.ItemScope(3L, null));
         given(homeworkItemService.update(anyLong(), any(HomeworkItemUpdateRequest.class)))
                 .willReturn(new HomeworkItemResponse(501L, 3L, "중2 심화반", null, null,
                         "단어장 Ch.6", "Unit 16-20", LocalDate.of(2026, 8, 24), LocalDate.of(2026, 8, 26)));
 
-        mockMvc.perform(patch("/v1/homework-items/501")
+        mockMvc.perform(patch("/v1/homework-items/501").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"단어장 Ch.6\"}"))
                 .andExpect(status().isOk())
@@ -108,10 +128,10 @@ class HomeworkControllerTest {
 
     @Test
     void 존재하지_않는_항목을_수정하면_404를_반환한다() throws Exception {
-        given(homeworkItemService.update(anyLong(), any(HomeworkItemUpdateRequest.class)))
+        given(homeworkItemService.getScope(999L))
                 .willThrow(new BusinessException(ErrorCode.NOT_FOUND, "숙제 항목을 찾을 수 없습니다. id=999"));
 
-        mockMvc.perform(patch("/v1/homework-items/999")
+        mockMvc.perform(patch("/v1/homework-items/999").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"단어장 Ch.6\"}"))
                 .andExpect(status().isNotFound())
@@ -120,17 +140,20 @@ class HomeworkControllerTest {
 
     @Test
     void 숙제_항목을_삭제하면_204를_반환한다() throws Exception {
-        mockMvc.perform(delete("/v1/homework-items/501"))
+        given(homeworkItemService.getScope(501L)).willReturn(new HomeworkItemService.ItemScope(3L, null));
+
+        mockMvc.perform(delete("/v1/homework-items/501").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void 항목별_학생_기록을_조회한다() throws Exception {
+        given(homeworkItemService.getScope(501L)).willReturn(new HomeworkItemService.ItemScope(3L, null));
         given(homeworkRecordService.getItemRecords(501L))
                 .willReturn(List.of(new HomeworkRecordResponse(1L, 501L, "단어장 Ch.5",
                         LocalDate.of(2026, 8, 17), LocalDate.of(2026, 8, 19), 101L, "김민준", true, 98, "오타 1개")));
 
-        mockMvc.perform(get("/v1/homework-items/501/records"))
+        mockMvc.perform(get("/v1/homework-items/501/records").header("Authorization", TEACHER_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].studentName").value("김민준"))
                 .andExpect(jsonPath("$.data[0].isDone").value(true));
@@ -145,7 +168,7 @@ class HomeworkControllerTest {
                 .willReturn(List.of(new HomeworkRecordResponse(1L, 501L, "단어장 Ch.5",
                         LocalDate.of(2026, 8, 17), LocalDate.of(2026, 8, 19), 101L, "김민준", true, 98, "오타 1개")));
 
-        mockMvc.perform(post("/v1/homework-records/bulk")
+        mockMvc.perform(post("/v1/homework-records/bulk").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -158,7 +181,7 @@ class HomeworkControllerTest {
                 {"items":[{"homeworkItemId":501,"records":[{"studentId":101,"isDone":true}]}]}
                 """;
 
-        mockMvc.perform(post("/v1/homework-records/bulk")
+        mockMvc.perform(post("/v1/homework-records/bulk").header("Authorization", TEACHER_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().is(422))
@@ -175,7 +198,7 @@ class HomeworkControllerTest {
                                 LocalDate.of(2026, 8, 12), 101L, "김민준", false, null, "재제출 요청")
                 ));
 
-        mockMvc.perform(get("/v1/students/101/homework")
+        mockMvc.perform(get("/v1/students/101/homework").header("Authorization", PARENT_TOKEN)
                         .param("from", "2026-08-01").param("to", "2026-08-31"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
@@ -184,7 +207,7 @@ class HomeworkControllerTest {
 
     @Test
     void from_to가_없으면_422를_반환한다() throws Exception {
-        mockMvc.perform(get("/v1/students/101/homework"))
+        mockMvc.perform(get("/v1/students/101/homework").header("Authorization", PARENT_TOKEN))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }

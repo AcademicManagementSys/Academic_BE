@@ -7,12 +7,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface StudentRepository extends JpaRepository<Student, Long> {
 
     boolean existsBySchoolClassId(Long classId);
 
     List<Student> findBySchoolClassId(Long classId);
+
+    boolean existsByIdAndUserId(Long id, Long userId);
+
+    Optional<Student> findByUserId(Long userId);
 
     @Query("select s from Student s "
             + "where (:classId is null or s.schoolClass.id = :classId) "

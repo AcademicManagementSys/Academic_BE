@@ -79,7 +79,7 @@ class NoticeServiceTest {
             given(noticeRepository.save(any(Notice.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             NoticeResponse response = noticeService.create(new NoticeCreateRequest(
-                    1L, NoticeScope.ALL, null, "추석 연휴 휴원 안내", "내용", true));
+                    NoticeScope.ALL, null, "추석 연휴 휴원 안내", "내용", true), 1L);
 
             assertThat(response.authorId()).isEqualTo(1L);
             assertThat(response.scope()).isEqualTo(NoticeScope.ALL);
@@ -93,7 +93,7 @@ class NoticeServiceTest {
             given(noticeRepository.save(any(Notice.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             NoticeResponse response = noticeService.create(new NoticeCreateRequest(
-                    2L, NoticeScope.CLASS, 3L, "특강 안내", "내용", null));
+                    NoticeScope.CLASS, 3L, "특강 안내", "내용", null), 2L);
 
             assertThat(response.classId()).isEqualTo(3L);
             assertThat(response.isPinned()).isFalse();
@@ -104,7 +104,7 @@ class NoticeServiceTest {
             given(userRepository.findById(99L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> noticeService.create(
-                    new NoticeCreateRequest(99L, NoticeScope.ALL, null, "제목", "내용", null)))
+                    new NoticeCreateRequest(NoticeScope.ALL, null, "제목", "내용", null), 99L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.NOT_FOUND);
@@ -117,7 +117,7 @@ class NoticeServiceTest {
             given(userRepository.findById(4L)).willReturn(Optional.of(parent));
 
             assertThatThrownBy(() -> noticeService.create(
-                    new NoticeCreateRequest(4L, NoticeScope.ALL, null, "제목", "내용", null)))
+                    new NoticeCreateRequest(NoticeScope.ALL, null, "제목", "내용", null), 4L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.VALIDATION_ERROR);
@@ -128,7 +128,7 @@ class NoticeServiceTest {
             given(userRepository.findById(2L)).willReturn(Optional.of(teacher));
 
             assertThatThrownBy(() -> noticeService.create(
-                    new NoticeCreateRequest(2L, NoticeScope.ALL, null, "제목", "내용", null)))
+                    new NoticeCreateRequest(NoticeScope.ALL, null, "제목", "내용", null), 2L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.VALIDATION_ERROR);
@@ -139,7 +139,7 @@ class NoticeServiceTest {
             given(userRepository.findById(1L)).willReturn(Optional.of(admin));
 
             assertThatThrownBy(() -> noticeService.create(
-                    new NoticeCreateRequest(1L, NoticeScope.CLASS, null, "제목", "내용", null)))
+                    new NoticeCreateRequest(NoticeScope.CLASS, null, "제목", "내용", null), 1L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.VALIDATION_ERROR);
@@ -151,7 +151,7 @@ class NoticeServiceTest {
             given(schoolClassRepository.findById(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> noticeService.create(
-                    new NoticeCreateRequest(1L, NoticeScope.CLASS, 999L, "제목", "내용", null)))
+                    new NoticeCreateRequest(NoticeScope.CLASS, 999L, "제목", "내용", null), 1L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.NOT_FOUND);

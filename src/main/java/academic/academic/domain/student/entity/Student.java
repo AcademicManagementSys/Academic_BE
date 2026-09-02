@@ -30,7 +30,7 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 학생 본인 로그인 계정(추후 학생용 로그인 기능 도입 시 연결). FR-01 등록 시점에는 필수가 아니다.
+    // 학생 본인 로그인 계정 (FR-01-07: 학생 등록 시 함께 발급).
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
@@ -98,5 +98,9 @@ public class Student {
 
     public void changeStatus(StudentStatus status) {
         this.status = status;
+    }
+
+    public void linkUser(User user) {
+        this.user = user;
     }
 }

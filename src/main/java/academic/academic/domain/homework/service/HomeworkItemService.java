@@ -86,4 +86,15 @@ public class HomeworkItemService {
         return homeworkItemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "숙제 항목을 찾을 수 없습니다. id=" + id));
     }
+
+    /** 소유권 체크용 — 숙제 항목이 반 단위인지 개별 학생 단위인지 조회한다. */
+    public ItemScope getScope(Long id) {
+        HomeworkItem item = getItem(id);
+        Long classId = item.getSchoolClass() != null ? item.getSchoolClass().getId() : null;
+        Long studentId = item.getStudent() != null ? item.getStudent().getId() : null;
+        return new ItemScope(classId, studentId);
+    }
+
+    public record ItemScope(Long classId, Long studentId) {
+    }
 }

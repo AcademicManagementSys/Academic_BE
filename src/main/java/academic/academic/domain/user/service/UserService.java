@@ -4,6 +4,7 @@ import academic.academic.domain.schoolclass.entity.SchoolClass;
 import academic.academic.domain.schoolclass.repository.SchoolClassRepository;
 import academic.academic.domain.teacherassignment.entity.TeacherAssignment;
 import academic.academic.domain.teacherassignment.repository.TeacherAssignmentRepository;
+import academic.academic.domain.user.dto.PasswordResetResponse;
 import academic.academic.domain.user.dto.UserCreateRequest;
 import academic.academic.domain.user.dto.UserResponse;
 import academic.academic.domain.user.dto.UserStatusUpdateRequest;
@@ -13,6 +14,7 @@ import academic.academic.domain.user.entity.User;
 import academic.academic.domain.user.repository.UserRepository;
 import academic.academic.global.exception.BusinessException;
 import academic.academic.global.exception.ErrorCode;
+import academic.academic.global.util.CredentialGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -80,6 +82,14 @@ public class UserService {
         User user = findUser(id);
         user.changeActive(request.active());
         return UserResponse.from(user);
+    }
+
+    @Transactional
+    public PasswordResetResponse resetPassword(Long id) {
+        User user = findUser(id);
+        String tempPassword = CredentialGenerator.randomPassword();
+        user.changePassword(passwordEncoder.encode(tempPassword));
+        return new PasswordResetResponse(user.getId(), user.getLoginId(), tempPassword, true);
     }
 
     private User findUser(Long id) {

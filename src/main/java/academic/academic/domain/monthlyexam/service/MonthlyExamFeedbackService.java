@@ -98,4 +98,14 @@ public class MonthlyExamFeedbackService {
         return typeFeedbackRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "유형별 피드백을 찾을 수 없습니다. id=" + id));
     }
+
+    /** 소유권 체크용 — 성적 id로 학생을 조회한다. */
+    public Long getStudentIdForRecord(Long recordId) {
+        return getRecord(recordId).getStudent().getId();
+    }
+
+    /** 소유권 체크용 — 유형별 피드백 id로 학생을 조회한다. */
+    public Long getStudentIdForTypeFeedback(Long feedbackId) {
+        return getTypeFeedback(feedbackId).getMonthlyExamRecord().getStudent().getId();
+    }
 }

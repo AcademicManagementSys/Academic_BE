@@ -105,6 +105,11 @@ public class MonthlyExamRecordService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "월말모의고사 성적을 찾을 수 없습니다. id=" + id));
     }
 
+    /** 소유권 체크용 — 성적이 어느 학생 소속인지 조회한다. */
+    public Long getStudentIdForRecord(Long id) {
+        return getRecord(id).getStudent().getId();
+    }
+
     private MonthlyExam getExam(Long id) {
         return monthlyExamRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "월말모의고사 회차를 찾을 수 없습니다. id=" + id));

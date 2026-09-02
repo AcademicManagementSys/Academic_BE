@@ -42,4 +42,11 @@ public class TestSessionService {
                 .map(TestSessionResponse::from)
                 .toList();
     }
+
+    /** 소유권 체크용 — 회차가 어느 반 소속인지 조회한다. */
+    public Long getClassIdForSession(Long id) {
+        TestSession session = testSessionRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "테스트 회차를 찾을 수 없습니다. id=" + id));
+        return session.getSchoolClass().getId();
+    }
 }

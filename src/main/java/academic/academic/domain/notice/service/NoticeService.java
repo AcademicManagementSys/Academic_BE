@@ -26,9 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 공지사항 관리 (SCR-18, SCR-19, FR-09-01 ~ FR-09-06).
- * 인증/세션 체계가 아직 없어 작성자를 authorId로 명시하고, /me/notices 대신
- * 학생 id를 명시하는 경로로 학부모/학생용 조회를 제공한다(ParentStudentController와 동일한 방식).
+ * 공지사항 관리 (SCR-18, SCR-19, FR-09-01 ~ FR-09-06). 작성자/권한 검증은 컨트롤러에서
+ * {@code AuthorizationService}로 먼저 하고, 여기서는 "scope=all은 admin만" 같은 도메인 규칙만 검증한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,9 +40,9 @@ public class NoticeService {
     private final StudentRepository studentRepository;
 
     @Transactional
-    public NoticeResponse create(NoticeCreateRequest request) {
-        User author = userRepository.findById(request.authorId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "작성자를 찾을 수 없습니다. id=" + request.authorId()));
+    public NoticeResponse create(NoticeCreateRequest request, Long authorId) {
+        User author = userRepository.findById(authorId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "작성자를 찾을 수 없습니다. id=" + authorId));
         if (author.getRole() != Role.ADMIN && author.getRole() != Role.TEACHER) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "공지사항은 원장/관리자 또는 선생님만 작성할 수 있습니다.");
         }
@@ -119,5 +118,20 @@ public class NoticeService {
     private Notice getEntity(Long id) {
         return noticeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "공지사항을 찾을 수 없습니다. id=" + id));
+    }
+
+    /** 소유권 체크용 — 작성자 id를 조회한다("본인이 작성한 담당 반 공지만" 수정/삭제 가능). */
+    public Long getAuthorId(Long id) {
+        return getEntity(id).getAuthor().getId();
+    }
+
+    /** 소유권 체크용 — scope/classId를 조회한다(GET /notices/{id}의 본인·자녀 관련 여부 판단용). */
+    public NoticeScopeInfo getScopeInfo(Long id) {
+        Notice notice = getEntity(id);
+        Long classId = notice.getSchoolClass() != null ? notice.getSchoolClass().getId() : null;
+        return new NoticeScopeInfo(notice.getScope(), classId);
+    }
+
+    public record NoticeScopeInfo(NoticeScope scope, Long classId) {
     }
 }

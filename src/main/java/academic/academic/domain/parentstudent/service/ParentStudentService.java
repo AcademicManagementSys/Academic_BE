@@ -3,6 +3,7 @@ package academic.academic.domain.parentstudent.service;
 import academic.academic.domain.parentstudent.dto.ChildResponse;
 import academic.academic.domain.parentstudent.dto.ParentStudentCreateRequest;
 import academic.academic.domain.parentstudent.dto.ParentStudentResponse;
+import academic.academic.domain.parentstudent.dto.ParentStudentUpdateRequest;
 import academic.academic.domain.parentstudent.entity.ParentStudent;
 import academic.academic.domain.parentstudent.repository.ParentStudentRepository;
 import academic.academic.domain.schoolclass.entity.SchoolClass;
@@ -41,8 +42,16 @@ public class ParentStudentService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "이미 연결된 학부모-자녀 관계입니다.");
         }
 
-        ParentStudent link = ParentStudent.of(parent, student);
+        ParentStudent link = ParentStudent.of(parent, student, request.relationType());
         parentStudentRepository.save(link);
+        return ParentStudentResponse.from(link);
+    }
+
+    @Transactional
+    public ParentStudentResponse updateLink(Long id, ParentStudentUpdateRequest request) {
+        ParentStudent link = parentStudentRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "연결 정보를 찾을 수 없습니다. id=" + id));
+        link.changeRelationType(request.relationType());
         return ParentStudentResponse.from(link);
     }
 
@@ -55,7 +64,8 @@ public class ParentStudentService {
                             student.getId(),
                             student.getName(),
                             student.getGrade(),
-                            schoolClass != null ? schoolClass.getName() : null
+                            schoolClass != null ? schoolClass.getName() : null,
+                            link.getRelationType()
                     );
                 })
                 .toList();

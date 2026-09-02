@@ -14,6 +14,7 @@ public record StudentCreateRequest(
         Long classId,
         Long teacherId,
         LocalDate enrolledAt,
-        @Valid ParentInfoRequest parent
+        @Valid ParentInfoRequest parent,
+        @Valid StudentAccountRequest account
 ) {
 }

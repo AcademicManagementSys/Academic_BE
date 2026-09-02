@@ -80,6 +80,14 @@ public class AttendanceService {
                 .toList();
     }
 
+    /** 소유권(담당 반) 체크용 — 수정하려는 출석 기록이 어느 반 소속인지 조회한다. */
+    public Long getClassIdForAttendance(Long id) {
+        Attendance attendance = attendanceRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "출석 기록을 찾을 수 없습니다. id=" + id));
+        SchoolClass schoolClass = attendance.getStudent().getSchoolClass();
+        return schoolClass != null ? schoolClass.getId() : null;
+    }
+
     @Transactional
     public AttendanceResponse updateAttendance(Long id, AttendanceUpdateRequest request) {
         Attendance attendance = attendanceRepository.findById(id)

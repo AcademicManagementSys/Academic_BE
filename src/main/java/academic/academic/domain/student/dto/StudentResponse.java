@@ -16,9 +16,14 @@ public record StudentResponse(
         Long classId,
         String className,
         StudentStatus status,
-        LocalDate enrolledAt
+        LocalDate enrolledAt,
+        StudentAccountInfo account
 ) {
     public static StudentResponse from(Student student) {
+        return from(student, null);
+    }
+
+    public static StudentResponse from(Student student, StudentAccountInfo account) {
         SchoolClass schoolClass = student.getSchoolClass();
         return new StudentResponse(
                 student.getId(),
@@ -30,7 +35,8 @@ public record StudentResponse(
                 schoolClass != null ? schoolClass.getId() : null,
                 schoolClass != null ? schoolClass.getName() : null,
                 student.getStatus(),
-                student.getEnrolledAt()
+                student.getEnrolledAt(),
+                account
         );
     }
 }

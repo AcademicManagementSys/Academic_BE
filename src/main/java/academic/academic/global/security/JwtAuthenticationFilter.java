@@ -18,8 +18,9 @@ import java.util.Set;
 
 /**
  * Authorization: Bearer {accessToken} 헤더를 검증해 {@link AuthenticatedUser}를 request attribute로
- * 남긴다(API_명세서_V2 §2.2). 로그인/토큰 재발급/비밀번호 재설정 요청 경로만 인증 없이 통과시키고,
- * 나머지는 토큰이 없거나 무효하면 여기서 바로 401 UNAUTHENTICATED로 응답한다.
+ * 남긴다(API_명세서_V2 §2.2). 로그인/토큰 재발급 경로만 인증 없이 통과시키고, 나머지는 토큰이 없거나
+ * 무효하면 여기서 바로 401 UNAUTHENTICATED로 응답한다. 비밀번호를 잊어버린 경우의 자가 재설정 경로는
+ * 없다 — 관리자 강제 초기화(admin 전용)만 지원한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,9 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Set<String> WHITELIST = Set.of(
             "/v1/auth/login",
-            "/v1/auth/refresh",
-            "/v1/auth/password/reset-request",
-            "/v1/auth/password/reset"
+            "/v1/auth/refresh"
     );
     private static final String BEARER_PREFIX = "Bearer ";
 

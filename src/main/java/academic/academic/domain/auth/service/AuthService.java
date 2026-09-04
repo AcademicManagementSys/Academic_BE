@@ -2,13 +2,10 @@ package academic.academic.domain.auth.service;
 
 import academic.academic.domain.auth.dto.LoginRequest;
 import academic.academic.domain.auth.dto.LoginResponse;
-import academic.academic.domain.auth.dto.PasswordResetConfirmRequest;
-import academic.academic.domain.auth.dto.PasswordResetRequestResponse;
+import academic.academic.domain.auth.dto.PasswordChangeRequest;
 import academic.academic.domain.auth.dto.TokenPairResponse;
 import academic.academic.domain.auth.dto.UserSummary;
-import academic.academic.domain.auth.entity.PasswordResetToken;
 import academic.academic.domain.auth.entity.RefreshToken;
-import academic.academic.domain.auth.repository.PasswordResetTokenRepository;
 import academic.academic.domain.auth.repository.RefreshTokenRepository;
 import academic.academic.domain.parentstudent.repository.ParentStudentRepository;
 import academic.academic.domain.user.entity.Role;
@@ -16,34 +13,30 @@ import academic.academic.domain.user.entity.User;
 import academic.academic.domain.user.repository.UserRepository;
 import academic.academic.global.exception.BusinessException;
 import academic.academic.global.exception.ErrorCode;
+import academic.academic.global.security.AuthenticatedUser;
 import academic.academic.global.security.JwtProvider;
-import academic.academic.global.util.CredentialGenerator;
 import academic.academic.global.util.TokenHasher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 로그인/토큰 재발급/로그아웃/비밀번호 자가 재설정 (API_명세서_V2 §3, REQ-AUTH-01~07).
- * 비밀번호 재설정 이메일 발송은 인프라가 없어 생략하고 토큰 발급까지만 구현한다 — 대신 관리자 초기화
- * ({@link academic.academic.domain.user.service.UserService#resetPassword})가 REQ-AUTH-07의 대안 경로를
- * 이미 충족한다.
+ * 로그인/토큰 재발급/로그아웃/비밀번호 변경 (API_명세서_V2 §3, REQ-AUTH-01·06). 비밀번호를 잊어버린
+ * 경우(REQ-AUTH-07)는 이메일 인프라가 없어 자가 재설정 대신 관리자 강제 초기화
+ * ({@link academic.academic.domain.user.service.UserService#resetPassword})만 지원한다. 로그인 상태의
+ * 사용자가 현재 비밀번호를 아는 경우는 {@link #changePassword}로 바로 바꿀 수 있다.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
 
-    private static final Duration PASSWORD_RESET_TOKEN_TTL = Duration.ofMinutes(30);
-
     private final UserRepository userRepository;
     private final ParentStudentRepository parentStudentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
 
@@ -92,29 +85,13 @@ public class AuthService {
     }
 
     @Transactional
-    public PasswordResetRequestResponse requestPasswordReset(String loginId) {
-        User user = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "아이디를 찾을 수 없습니다. loginId=" + loginId));
-
-        String rawToken = CredentialGenerator.randomToken();
-        LocalDateTime expiresAt = LocalDateTime.now().plus(PASSWORD_RESET_TOKEN_TTL);
-        passwordResetTokenRepository.save(PasswordResetToken.builder()
-                .user(user)
-                .tokenHash(TokenHasher.sha256Hex(rawToken))
-                .expiresAt(expiresAt)
-                .build());
-        return new PasswordResetRequestResponse(rawToken, expiresAt);
-    }
-
-    @Transactional
-    public void confirmPasswordReset(PasswordResetConfirmRequest request) {
-        PasswordResetToken token = passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex(request.resetToken()))
-                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHENTICATED, "토큰이 유효하지 않습니다."));
-        if (!token.isUsable(LocalDateTime.now())) {
-            throw new BusinessException(ErrorCode.UNAUTHENTICATED, "만료되었거나 이미 사용된 토큰입니다.");
+    public void changePassword(AuthenticatedUser me, PasswordChangeRequest request) {
+        User user = userRepository.findById(me.id())
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHENTICATED, "사용자를 찾을 수 없습니다."));
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "현재 비밀번호가 일치하지 않습니다.");
         }
-        token.markUsed();
-        token.getUser().changePassword(passwordEncoder.encode(request.newPassword()));
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 
     private TokenPairResponse issueTokenPair(User user) {

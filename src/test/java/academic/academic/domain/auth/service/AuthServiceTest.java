@@ -2,12 +2,9 @@ package academic.academic.domain.auth.service;
 
 import academic.academic.domain.auth.dto.LoginRequest;
 import academic.academic.domain.auth.dto.LoginResponse;
-import academic.academic.domain.auth.dto.PasswordResetConfirmRequest;
-import academic.academic.domain.auth.dto.PasswordResetRequestResponse;
+import academic.academic.domain.auth.dto.PasswordChangeRequest;
 import academic.academic.domain.auth.dto.TokenPairResponse;
-import academic.academic.domain.auth.entity.PasswordResetToken;
 import academic.academic.domain.auth.entity.RefreshToken;
-import academic.academic.domain.auth.repository.PasswordResetTokenRepository;
 import academic.academic.domain.auth.repository.RefreshTokenRepository;
 import academic.academic.domain.parentstudent.entity.ParentStudent;
 import academic.academic.domain.parentstudent.entity.RelationType;
@@ -18,6 +15,7 @@ import academic.academic.domain.user.entity.User;
 import academic.academic.domain.user.repository.UserRepository;
 import academic.academic.global.exception.BusinessException;
 import academic.academic.global.exception.ErrorCode;
+import academic.academic.global.security.AuthenticatedUser;
 import academic.academic.global.security.JwtProvider;
 import academic.academic.global.util.TokenHasher;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,8 +48,6 @@ class AuthServiceTest {
     private ParentStudentRepository parentStudentRepository;
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
-    @Mock
-    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtProvider jwtProvider = new JwtProvider(
@@ -64,7 +60,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userRepository, parentStudentRepository, refreshTokenRepository,
-                passwordResetTokenRepository, passwordEncoder, jwtProvider);
+                passwordEncoder, jwtProvider);
 
         teacher = User.builder().name("김선생").role(Role.TEACHER).loginId("teacher1")
                 .passwordHash(passwordEncoder.encode("pw1234")).build();
@@ -225,66 +221,38 @@ class AuthServiceTest {
     }
 
     @Nested
-    class PasswordReset {
+    class PasswordChange {
+
+        private final AuthenticatedUser me = new AuthenticatedUser(2L, Role.TEACHER, "teacher1");
 
         @Test
-        void 재설정_토큰을_발급한다() {
-            given(userRepository.findByLoginId("teacher1")).willReturn(Optional.of(teacher));
-
-            PasswordResetRequestResponse response = authService.requestPasswordReset("teacher1");
-
-            assertThat(response.resetToken()).isNotBlank();
-            assertThat(response.expiresAt()).isAfter(LocalDateTime.now());
-            verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
-        }
-
-        @Test
-        void 존재하지_않는_아이디면_NOT_FOUND_예외() {
-            given(userRepository.findByLoginId("nobody")).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> authService.requestPasswordReset("nobody"))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.NOT_FOUND);
-        }
-
-        @Test
-        void 유효한_토큰으로_비밀번호를_변경한다() {
-            PasswordResetToken token = PasswordResetToken.builder()
-                    .user(teacher).tokenHash(TokenHasher.sha256Hex("raw-token"))
-                    .expiresAt(LocalDateTime.now().plusMinutes(30)).build();
-            given(passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex("raw-token")))
-                    .willReturn(Optional.of(token));
+        void 현재_비밀번호가_맞으면_새_비밀번호로_바뀐다() {
+            given(userRepository.findById(2L)).willReturn(Optional.of(teacher));
             String oldHash = teacher.getPasswordHash();
 
-            authService.confirmPasswordReset(new PasswordResetConfirmRequest("raw-token", "newPassword1!"));
+            authService.changePassword(me, new PasswordChangeRequest("pw1234", "newPassword1!"));
 
             assertThat(teacher.getPasswordHash()).isNotEqualTo(oldHash);
             assertThat(passwordEncoder.matches("newPassword1!", teacher.getPasswordHash())).isTrue();
-            assertThat(token.isUsable(LocalDateTime.now())).isFalse();
         }
 
         @Test
-        void 만료된_토큰이면_UNAUTHENTICATED_예외() {
-            PasswordResetToken token = PasswordResetToken.builder()
-                    .user(teacher).tokenHash(TokenHasher.sha256Hex("raw-token"))
-                    .expiresAt(LocalDateTime.now().minusMinutes(1)).build();
-            given(passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex("raw-token")))
-                    .willReturn(Optional.of(token));
+        void 현재_비밀번호가_틀리면_VALIDATION_ERROR_예외() {
+            given(userRepository.findById(2L)).willReturn(Optional.of(teacher));
+            String oldHash = teacher.getPasswordHash();
 
-            assertThatThrownBy(() -> authService.confirmPasswordReset(
-                    new PasswordResetConfirmRequest("raw-token", "newPassword1!")))
+            assertThatThrownBy(() -> authService.changePassword(me, new PasswordChangeRequest("wrong-pw", "newPassword1!")))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ErrorCode.UNAUTHENTICATED);
+                    .isEqualTo(ErrorCode.VALIDATION_ERROR);
+            assertThat(teacher.getPasswordHash()).isEqualTo(oldHash);
         }
 
         @Test
-        void 존재하지_않는_토큰이면_UNAUTHENTICATED_예외() {
-            given(passwordResetTokenRepository.findByTokenHash(any())).willReturn(Optional.empty());
+        void 존재하지_않는_사용자면_UNAUTHENTICATED_예외() {
+            given(userRepository.findById(2L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.confirmPasswordReset(
-                    new PasswordResetConfirmRequest("garbage", "newPassword1!")))
+            assertThatThrownBy(() -> authService.changePassword(me, new PasswordChangeRequest("pw1234", "newPassword1!")))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.UNAUTHENTICATED);

@@ -142,15 +142,18 @@ DB를 비우면 admin 계정도 함께 사라지므로, 다시 실행하기 전�
 ## 5. 알려진 제약 사항
 
 - **인증(JWT + Refresh Token, RBAC + 소유권 체크) 구현 완료 (2026-09-02)**: 요구사항 명세서
-  REQ-AUTH-01~07, API 명세서 §3(인증 API)·§15(권한 매트릭스)가 이제 실제로 서버에서 강제됩니다.
-  모든 API는 `Authorization: Bearer {{accessToken}}` 헤더가 있어야 하며(로그인/토큰재발급/비밀번호
-  재설정 요청 4개만 예외), 역할(admin/teacher/parent/student)과 소유권(담당 반·자녀·본인)이
-  맞지 않으면 403(`FORBIDDEN_ROLE`/`FORBIDDEN_SCOPE`)이 돌아옵니다. API 명세서의 `/me/children`,
+  REQ-AUTH-01~06, API 명세서 §3(인증 API)·§15(권한 매트릭스)가 이제 실제로 서버에서 강제됩니다.
+  모든 API는 `Authorization: Bearer {{accessToken}}` 헤더가 있어야 하며(로그인/토큰재발급 2개만
+  예외), 역할(admin/teacher/parent/student)과 소유권(담당 반·자녀·본인)이 맞지 않으면
+  403(`FORBIDDEN_ROLE`/`FORBIDDEN_SCOPE`)이 돌아옵니다. API 명세서의 `/me/children`,
   `/me/notices`도 이제 명세서 그대로 `GET /v1/me/children`, `GET /v1/me/notices`로 구현되어 있고
   (로그인 토큰에서 신원을 가져옴), "선생님 본인이 작성한 담당 반 공지만 수정/삭제 가능" 같은 세부
-  권한도 서버에서 강제합니다. 비밀번호 자가 재설정(`POST /auth/password/reset-request`/`reset`)은
-  이메일 발송 인프라가 없어 토큰 발급까지만 구현했고 실제 발송은 생략했습니다 — 응답에 재설정 토큰이
-  그대로 노출되니 운영 환경에서는 이 두 엔드포인트를 이 형태로 쓰면 안 됩니다(개발/테스트 전용).
+  권한도 서버에서 강제합니다.
+- **비밀번호 재설정(REQ-AUTH-07)은 이메일 없이 두 경로만 지원 (2026-09-04)**: 로그인 상태에서 현재
+  비밀번호를 아는 사용자는 `POST /v1/auth/password/change`(본인, 현재 비밀번호 확인 후 변경)를,
+  비밀번호를 완전히 잊은 경우는 `POST /v1/users/{id}/reset-password`(admin 전용 강제 초기화, 임시
+  비밀번호를 응답에 1회 노출)를 씁니다. 이메일 발송 인프라 없이 토큰을 응답에 노출하던 자가 재설정
+  임시조치(`POST /auth/password/reset-request`/`reset`)는 제거했습니다.
 - **FR-09 전체(all) 공지도 이제 자동 플로우에 포함**: admin 로그인이 가능해지면서(위 "1.3) admin
   계정 시드" 참고) `[Notice] 전체(all) 공지 작성 (관리자)` 요청으로 성공 케이스까지 컬렉션에 포함
   시켰습니다. "선생님이 전체 공지를 시도하면 422"라는 실패 케이스(FR-09-01/02 권한 규칙)도 그대로

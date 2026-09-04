@@ -1,7 +1,6 @@
 package academic.academic.domain.auth.controller;
 
 import academic.academic.domain.auth.dto.LoginResponse;
-import academic.academic.domain.auth.dto.PasswordResetRequestResponse;
 import academic.academic.domain.auth.dto.TokenPairResponse;
 import academic.academic.domain.auth.dto.UserSummary;
 import academic.academic.domain.auth.service.AuthService;
@@ -17,11 +16,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
-
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -93,20 +90,27 @@ class AuthControllerTest {
     }
 
     @Test
-    void 비밀번호_재설정_토큰을_발급한다() throws Exception {
-        given(authService.requestPasswordReset(eq("teacher1")))
-                .willReturn(new PasswordResetRequestResponse("reset-token", LocalDateTime.of(2026, 9, 2, 10, 30)));
-
-        mockMvc.perform(post("/v1/auth/password/reset-request").contentType("application/json")
-                        .content("{\"loginId\":\"teacher1\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.resetToken").value("reset-token"));
+    void 로그인_상태면_현재_비밀번호를_확인하고_비밀번호를_바꿀_수_있다() throws Exception {
+        mockMvc.perform(post("/v1/auth/password/change").header("Authorization", TEACHER_TOKEN).contentType("application/json")
+                        .content("{\"currentPassword\":\"pw1234\",\"newPassword\":\"newPassword1!\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void 비밀번호를_재설정한다() throws Exception {
-        mockMvc.perform(post("/v1/auth/password/reset").contentType("application/json")
-                        .content("{\"resetToken\":\"reset-token\",\"newPassword\":\"newPassword1!\"}"))
-                .andExpect(status().isOk());
+    void 비밀번호_변경은_토큰이_있어야_한다() throws Exception {
+        mockMvc.perform(post("/v1/auth/password/change").contentType("application/json")
+                        .content("{\"currentPassword\":\"pw1234\",\"newPassword\":\"newPassword1!\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 현재_비밀번호가_틀리면_422를_반환한다() throws Exception {
+        willThrow(new BusinessException(ErrorCode.VALIDATION_ERROR, "현재 비밀번호가 일치하지 않습니다."))
+                .given(authService).changePassword(any(), any());
+
+        mockMvc.perform(post("/v1/auth/password/change").header("Authorization", TEACHER_TOKEN).contentType("application/json")
+                        .content("{\"currentPassword\":\"wrong\",\"newPassword\":\"newPassword1!\"}"))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 }

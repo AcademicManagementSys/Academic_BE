@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -39,7 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return WHITELIST.contains(request.getRequestURI());
+        // 이 필터는 서블릿 필터라 DispatcherServlet(및 CORS preflight 처리)보다 먼저 실행된다.
+        // CORS preflight(OPTIONS)는 Authorization 헤더 없이 오므로 여기서 막으면 SecurityWebConfig의
+        // CORS 허용 자체가 브라우저에 전달되지 못한다 — 그대로 통과시켜야 한다.
+        return HttpMethod.OPTIONS.matches(request.getMethod()) || WHITELIST.contains(request.getRequestURI());
     }
 
     @Override

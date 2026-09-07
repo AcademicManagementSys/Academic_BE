@@ -72,7 +72,10 @@ public class StudentService {
             linkParent(student, request.parent());
         }
 
-        StudentAccountInfo accountInfo = issueStudentAccount(student, request.account());
+        // account를 생략하면 학생 로그인 계정 자체를 만들지 않는다 (API_명세서_v1.3 §5, opt-in).
+        StudentAccountInfo accountInfo = request.account() != null
+                ? issueStudentAccount(student, request.account())
+                : null;
         return StudentResponse.from(student, accountInfo);
     }
 
@@ -165,9 +168,9 @@ public class StudentService {
         parentStudentRepository.save(ParentStudent.of(parentUser, student, parentInfo.relationType()));
     }
 
+    /** accountRequest가 null이면 호출하지 않는다 — account를 생략하면 계정을 아예 만들지 않는 게 정책. */
     private StudentAccountInfo issueStudentAccount(Student student, StudentAccountRequest accountRequest) {
-        boolean useGivenLoginId = accountRequest != null
-                && StringUtils.hasText(accountRequest.loginId())
+        boolean useGivenLoginId = StringUtils.hasText(accountRequest.loginId())
                 && !Boolean.TRUE.equals(accountRequest.autoGenerateLoginId());
 
         String loginId;

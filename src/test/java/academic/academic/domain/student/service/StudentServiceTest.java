@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,11 +60,21 @@ class StudentServiceTest {
     class CreateStudent {
 
         @Test
-        void account를_생략하면_학생_본인_로그인_계정을_자동_발급한다() {
+        void account를_생략하면_학생_로그인_계정을_발급하지_않는다() {
+            StudentResponse response = studentService.createStudent(new StudentCreateRequest(
+                    "김민준", null, null, null, null, null, null, null, null, null));
+
+            assertThat(response.account()).isNull();
+            verify(userRepository, never()).save(any(User.class));
+        }
+
+        @Test
+        void account를_지정하면_학생_본인_로그인_계정을_발급한다() {
             given(userRepository.existsByLoginId(any())).willReturn(false);
 
             StudentResponse response = studentService.createStudent(new StudentCreateRequest(
-                    "김민준", null, null, null, null, null, null, null, null, null));
+                    "김민준", null, null, null, null, null, null, null, null,
+                    new StudentAccountRequest(null, true)));
 
             assertThat(response.account()).isNotNull();
             assertThat(response.account().loginId()).startsWith("std");

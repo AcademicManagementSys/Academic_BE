@@ -201,7 +201,9 @@ class MonthlyExamRecordServiceTest {
             ReflectionTestUtils.setField(exam2, "id", 11L);
 
             MonthlyExamRecord r1 = MonthlyExamRecord.builder().monthlyExam(exam1).student(student1).rawScore(72).build();
+            ReflectionTestUtils.setField(r1, "id", 501L);
             MonthlyExamRecord r2 = MonthlyExamRecord.builder().monthlyExam(exam2).student(student1).rawScore(78).build();
+            ReflectionTestUtils.setField(r2, "id", 502L);
 
             given(studentRepository.existsById(101L)).willReturn(true);
             given(monthlyExamRecordRepository.findRecentByStudentId(101L, PageRequest.of(0, 5)))
@@ -211,7 +213,9 @@ class MonthlyExamRecordServiceTest {
 
             assertThat(result).hasSize(2);
             assertThat(result.get(0).examMonth()).isEqualTo("2026-06");
+            assertThat(result.get(0).recordId()).isEqualTo(501L);
             assertThat(result.get(1).examMonth()).isEqualTo("2026-07");
+            assertThat(result.get(1).recordId()).isEqualTo(502L);
         }
 
         @Test

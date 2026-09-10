@@ -492,8 +492,8 @@ admin 전용.
 ```
 
 **`GET /students/{studentId}/monthly-exams` Response** — `MonthlyExamTrendResponse[]`:
-`[{ "examMonth": "2026-08", "rawScore": 88 }, { "examMonth": "2026-09", "rawScore": 92 }]`
-(그래프용 추이 — 최신순 `limit`개)
+`[{ "recordId": 401, "examMonth": "2026-08", "rawScore": 88 }, { "recordId": 402, "examMonth": "2026-09", "rawScore": 92 }]`
+(그래프용 추이 — 최신순 `limit`개. `recordId`로 각 점의 상세 `GET /monthly-exam-records/{recordId}`에 연결)
 
 **`TypeFeedbackCreateRequest`**: `{ "typeCategoryId": 2, "status": "needsWork", "feedbackText": "..." }`
 (`typeCategoryId`/`status` 필수). **`TypeFeedbackUpdateRequest`**: `{ "status": .., "feedbackText": .. }` (전부 선택).

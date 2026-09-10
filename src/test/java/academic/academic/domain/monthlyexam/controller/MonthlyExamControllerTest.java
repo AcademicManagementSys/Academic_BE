@@ -184,10 +184,11 @@ class MonthlyExamControllerTest {
     @Test
     void 학생_월말모의고사_추이를_조회한다() throws Exception {
         given(monthlyExamRecordService.getStudentTrend(101L, 5))
-                .willReturn(List.of(new MonthlyExamTrendResponse("2026-08", 82)));
+                .willReturn(List.of(new MonthlyExamTrendResponse(5000L, "2026-08", 82)));
 
         mockMvc.perform(get("/v1/students/101/monthly-exams").header("Authorization", PARENT_TOKEN))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].recordId").value(5000))
                 .andExpect(jsonPath("$.data[0].rawScore").value(82));
     }
 

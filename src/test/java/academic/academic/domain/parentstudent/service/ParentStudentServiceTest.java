@@ -115,6 +115,35 @@ class ParentStudentServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.VALIDATION_ERROR);
         }
+
+        @Test
+        void 같은_학생에_엄마가_이미_있으면_다른_학부모를_엄마로_연결할_수_없다() {
+            User anotherParent = User.builder().name("다른 학부모").role(Role.PARENT).loginId("parent2").passwordHash("hash").build();
+            ReflectionTestUtils.setField(anotherParent, "id", 46L);
+            given(userRepository.findById(46L)).willReturn(Optional.of(anotherParent));
+            given(studentRepository.findById(101L)).willReturn(Optional.of(student));
+            given(parentStudentRepository.existsByParentUserIdAndStudentId(46L, 101L)).willReturn(false);
+            given(parentStudentRepository.existsByStudentIdAndRelationType(101L, RelationType.MOTHER)).willReturn(true);
+
+            assertThatThrownBy(() -> parentStudentService.createLink(
+                    new ParentStudentCreateRequest(46L, 101L, RelationType.MOTHER)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.VALIDATION_ERROR);
+        }
+
+        @Test
+        void 기타_관계는_같은_학생에_여러_명_연결할_수_있다() {
+            given(userRepository.findById(45L)).willReturn(Optional.of(parent));
+            given(studentRepository.findById(101L)).willReturn(Optional.of(student));
+            given(parentStudentRepository.existsByParentUserIdAndStudentId(45L, 101L)).willReturn(false);
+            given(parentStudentRepository.save(any(ParentStudent.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            ParentStudentResponse response = parentStudentService.createLink(
+                    new ParentStudentCreateRequest(45L, 101L, RelationType.OTHER));
+
+            assertThat(response.relationType()).isEqualTo(RelationType.OTHER);
+        }
     }
 
     @Nested
@@ -140,6 +169,21 @@ class ParentStudentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ErrorCode.NOT_FOUND);
+        }
+
+        @Test
+        void 다른_링크가_이미_같은_관계면_VALIDATION_ERROR_예외() {
+            ParentStudent link = ParentStudent.of(parent, student, RelationType.OTHER);
+            ReflectionTestUtils.setField(link, "id", 7L);
+            given(parentStudentRepository.findById(7L)).willReturn(Optional.of(link));
+            given(parentStudentRepository.existsByStudentIdAndRelationTypeAndIdNot(101L, RelationType.MOTHER, 7L))
+                    .willReturn(true);
+
+            assertThatThrownBy(() -> parentStudentService.updateLink(7L,
+                    new ParentStudentUpdateRequest(RelationType.MOTHER)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.VALIDATION_ERROR);
         }
     }
 

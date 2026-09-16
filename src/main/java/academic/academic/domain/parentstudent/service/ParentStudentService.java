@@ -5,6 +5,7 @@ import academic.academic.domain.parentstudent.dto.ParentStudentCreateRequest;
 import academic.academic.domain.parentstudent.dto.ParentStudentResponse;
 import academic.academic.domain.parentstudent.dto.ParentStudentUpdateRequest;
 import academic.academic.domain.parentstudent.entity.ParentStudent;
+import academic.academic.domain.parentstudent.entity.RelationType;
 import academic.academic.domain.parentstudent.repository.ParentStudentRepository;
 import academic.academic.domain.schoolclass.entity.SchoolClass;
 import academic.academic.domain.student.entity.Student;
@@ -41,6 +42,7 @@ public class ParentStudentService {
         if (parentStudentRepository.existsByParentUserIdAndStudentId(parent.getId(), student.getId())) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "이미 연결된 학부모-자녀 관계입니다.");
         }
+        requireRelationTypeAvailable(student.getId(), request.relationType(), null);
 
         ParentStudent link = ParentStudent.of(parent, student, request.relationType());
         parentStudentRepository.save(link);
@@ -51,8 +53,27 @@ public class ParentStudentService {
     public ParentStudentResponse updateLink(Long id, ParentStudentUpdateRequest request) {
         ParentStudent link = parentStudentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "연결 정보를 찾을 수 없습니다. id=" + id));
+        requireRelationTypeAvailable(link.getStudent().getId(), request.relationType(), id);
         link.changeRelationType(request.relationType());
         return ParentStudentResponse.from(link);
+    }
+
+    /**
+     * 한 학생에게 아빠/엄마는 각각 최대 1명만 연결할 수 있다(1차 피드백 — 같은 학생에 Mother가 둘
+     * 연결되는 데이터 오류 방지). 기타(OTHER)는 조부모 등 여러 명일 수 있어 제한하지 않는다.
+     * excludeLinkId는 updateLink에서 자기 자신을 중복 체크에서 빼기 위한 것 — 신규 생성이면 null.
+     */
+    private void requireRelationTypeAvailable(Long studentId, RelationType relationType, Long excludeLinkId) {
+        if (relationType == RelationType.OTHER) {
+            return;
+        }
+        boolean alreadyTaken = excludeLinkId == null
+                ? parentStudentRepository.existsByStudentIdAndRelationType(studentId, relationType)
+                : parentStudentRepository.existsByStudentIdAndRelationTypeAndIdNot(studentId, relationType, excludeLinkId);
+        if (alreadyTaken) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "이미 같은 관계(" + (relationType == RelationType.FATHER ? "아빠" : "엄마") + ")로 연결된 보호자가 있습니다.");
+        }
     }
 
     public List<ChildResponse> getChildren(Long parentUserId) {

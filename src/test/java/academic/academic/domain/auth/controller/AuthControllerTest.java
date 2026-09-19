@@ -38,7 +38,7 @@ class AuthControllerTest {
     @Test
     void 로그인에_성공하면_토큰과_사용자_정보를_반환한다() throws Exception {
         given(authService.login(any())).willReturn(new LoginResponse(
-                "access-token", "refresh-token", new UserSummary(2L, "김선생", Role.TEACHER, false)));
+                "access-token", "refresh-token", new UserSummary(2L, "김선생", Role.TEACHER, false, null)));
 
         mockMvc.perform(post("/v1/auth/login").contentType("application/json")
                         .content("{\"loginId\":\"teacher1\",\"password\":\"pw1234\"}"))

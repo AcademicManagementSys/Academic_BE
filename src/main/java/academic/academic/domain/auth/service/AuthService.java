@@ -8,6 +8,8 @@ import academic.academic.domain.auth.dto.UserSummary;
 import academic.academic.domain.auth.entity.RefreshToken;
 import academic.academic.domain.auth.repository.RefreshTokenRepository;
 import academic.academic.domain.parentstudent.repository.ParentStudentRepository;
+import academic.academic.domain.student.entity.Student;
+import academic.academic.domain.student.repository.StudentRepository;
 import academic.academic.domain.user.entity.Role;
 import academic.academic.domain.user.entity.User;
 import academic.academic.domain.user.repository.UserRepository;
@@ -36,6 +38,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final ParentStudentRepository parentStudentRepository;
+    private final StudentRepository studentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -54,7 +57,11 @@ public class AuthService {
         TokenPairResponse tokens = issueTokenPair(user);
         boolean hasMultipleChildren = user.getRole() == Role.PARENT
                 && parentStudentRepository.findByParentUserId(user.getId()).size() > 1;
-        return new LoginResponse(tokens.accessToken(), tokens.refreshToken(), UserSummary.of(user, hasMultipleChildren));
+        Long studentId = user.getRole() == Role.STUDENT
+                ? studentRepository.findByUserId(user.getId()).map(Student::getId).orElse(null)
+                : null;
+        return new LoginResponse(tokens.accessToken(), tokens.refreshToken(),
+                UserSummary.of(user, hasMultipleChildren, studentId));
     }
 
     @Transactional

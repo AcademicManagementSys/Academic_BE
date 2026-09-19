@@ -10,6 +10,7 @@ import academic.academic.domain.parentstudent.entity.ParentStudent;
 import academic.academic.domain.parentstudent.entity.RelationType;
 import academic.academic.domain.parentstudent.repository.ParentStudentRepository;
 import academic.academic.domain.student.entity.Student;
+import academic.academic.domain.student.repository.StudentRepository;
 import academic.academic.domain.user.entity.Role;
 import academic.academic.domain.user.entity.User;
 import academic.academic.domain.user.repository.UserRepository;
@@ -47,6 +48,8 @@ class AuthServiceTest {
     @Mock
     private ParentStudentRepository parentStudentRepository;
     @Mock
+    private StudentRepository studentRepository;
+    @Mock
     private RefreshTokenRepository refreshTokenRepository;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -59,7 +62,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, parentStudentRepository, refreshTokenRepository,
+        authService = new AuthService(userRepository, parentStudentRepository, studentRepository, refreshTokenRepository,
                 passwordEncoder, jwtProvider);
 
         teacher = User.builder().name("김선생").role(Role.TEACHER).loginId("teacher1")
@@ -97,6 +100,35 @@ class AuthServiceTest {
             LoginResponse response = authService.login(new LoginRequest("parent1", "pw1234"));
 
             assertThat(response.user().hasMultipleChildren()).isTrue();
+        }
+
+        @Test
+        void 학생_로그인이면_본인의_studentId를_채워준다() {
+            User studentUser = User.builder().name("김학생").role(Role.STUDENT).loginId("student1")
+                    .passwordHash(passwordEncoder.encode("pw1234")).build();
+            ReflectionTestUtils.setField(studentUser, "id", 12L);
+            given(userRepository.findByLoginId("student1")).willReturn(Optional.of(studentUser));
+            Student student = Student.builder().name("김학생").build();
+            ReflectionTestUtils.setField(student, "id", 5L);
+            given(studentRepository.findByUserId(12L)).willReturn(Optional.of(student));
+
+            LoginResponse response = authService.login(new LoginRequest("student1", "pw1234"));
+
+            assertThat(response.user().studentId()).isEqualTo(5L);
+            assertThat(response.user().hasMultipleChildren()).isFalse();
+        }
+
+        @Test
+        void 학생용_계정이_아직_없으면_studentId는_null() {
+            User teacherLikeStudent = User.builder().name("연결안됨").role(Role.STUDENT).loginId("student2")
+                    .passwordHash(passwordEncoder.encode("pw1234")).build();
+            ReflectionTestUtils.setField(teacherLikeStudent, "id", 13L);
+            given(userRepository.findByLoginId("student2")).willReturn(Optional.of(teacherLikeStudent));
+            given(studentRepository.findByUserId(13L)).willReturn(Optional.empty());
+
+            LoginResponse response = authService.login(new LoginRequest("student2", "pw1234"));
+
+            assertThat(response.user().studentId()).isNull();
         }
 
         @Test

@@ -108,12 +108,17 @@ Refresh Token은 서버에 SHA-256 해시로 저장되어(`RefreshToken` 엔티�
   "data": {
     "accessToken": "eyJ...",
     "refreshToken": "eyJ...",
-    "user": { "id": 3, "name": "김선생", "role": "teacher", "hasMultipleChildren": false }
+    "user": { "id": 3, "name": "김선생", "role": "teacher", "hasMultipleChildren": false, "studentId": null }
   }
 }
 ```
 `user.hasMultipleChildren`은 role이 `parent`이고 자녀가 2명 이상일 때만 `true` — 프런트엔드는
 이 값이 `true`면 홈 대신 자녀 선택 화면(SCR-17)으로 먼저 이동한다.
+
+`user.studentId`는 role이 `student`일 때만 본인의 학생 id로 채워지고(연결된 학생 레코드가 없으면
+`null`), 그 외 role은 항상 `null`이다 — `/students/{id}/*` 계열 API가 전부 URL에 studentId를
+요구하는데 학생 본인 계정은 로그인 응답으로만 이 값을 알 수 있다. `GET /me`(§3)에는 아직 없으니,
+세션 복원 시 studentId가 필요하면 로그인을 다시 하거나 프런트에서 값을 유지해야 한다.
 
 **에러**: `loginId`/`password` 불일치 또는 `active=false` → `401 UNAUTHENTICATED`.
 
